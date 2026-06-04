@@ -162,6 +162,24 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:var
 .matrix-item .mi-name{font-weight:600;}
 .matrix-item .mi-meta{color:var(--text-muted);font-size:12px;margin-top:2px;}
 
+/* Eisenhower 4-quadrant (X=중요도, Y=긴급도) */
+.eisen{display:grid;grid-template-columns:30px 1fr 1fr;grid-template-rows:1fr 1fr 30px;gap:12px;max-width:1100px;margin-top:4px;}
+.eisen .yl{grid-row:1 / span 2;grid-column:1;writing-mode:vertical-rl;transform:rotate(180deg);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--primary);font-size:13px;letter-spacing:1px;}
+.eisen .xl{grid-row:3;grid-column:2 / span 2;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--primary);font-size:13px;letter-spacing:1px;}
+.eisen .q{border-radius:10px;padding:14px;min-height:170px;border:1px solid var(--border);display:flex;flex-direction:column;}
+.eisen .q .q-head{font-size:13px;font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:6px;}
+.eisen .q .q-sub{font-size:11px;color:var(--text-muted);margin-bottom:10px;}
+.eisen .q .q-body{flex:1;overflow-y:auto;max-height:240px;}
+.eisen .q-A{background:#FFF5F5;border-color:#FEB2B2;}
+.eisen .q-B{background:#FFFAF0;border-color:#FBD38D;}
+.eisen .q-C{background:#EBF8FF;border-color:#90CDF4;}
+.eisen .q-D{background:#F7FAFC;border-color:#CBD5E0;}
+.eisen .q-A .q-head{color:#C53030;} .eisen .q-B .q-head{color:#C05621;}
+.eisen .q-C .q-head{color:#2B6CB0;} .eisen .q-D .q-head{color:#4A5568;}
+.eisen .q-tag{font-size:10px;font-weight:700;padding:1px 6px;border-radius:3px;background:rgba(0,0,0,0.06);}
+.eisen-empty{color:var(--text-muted);font-size:12px;padding:6px;text-align:center;}
+@media(max-width:768px){.eisen{grid-template-columns:24px 1fr 1fr;}.eisen .q{min-height:130px;}}
+
 /* Monthly table */
 .monthly-table{width:100%;border-collapse:collapse;}
 .monthly-table th,.monthly-table td{padding:10px 12px;border:1px solid var(--border);font-size:13px;}
@@ -1724,25 +1742,70 @@ function buildMatrix(taskList) {
   }).join('');
 }
 
+// [4분면] X축=중요도, Y축=긴급도 (아이젠하워)
+// 우선순위 A/B/C/D는 긴급도×중요도 산출 결과이므로 이를 4분면에 그대로 매핑
+//   A=긴급高·중요高, B=긴급低·중요高, C=긴급高·중요低, D=긴급低·중요低
+function buildQuadrant(taskList) {
+  const groups = {A:[],B:[],C:[],D:[]};
+  taskList.forEach(t => { (groups[t.priority] || groups.D).push(t); });
+  const meta = {
+    A:{tag:'P A', title:'긴급 ⋅ 중요', sub:'지금 바로 실행'},
+    B:{tag:'P B', title:'중요 (덜 긴급)', sub:'계획 세워 처리'},
+    C:{tag:'P C', title:'긴급 (덜 중요)', sub:'빠르게 처리 ⋅ 위임'},
+    D:{tag:'P D', title:'그 외', sub:'여유 있을 때 / 정리'}
+  };
+  function cell(p) {
+    const list = groups[p];
+    const items = list.map(t =>
+      `<div class="matrix-item">
+        <div class="mi-name">${session.role==='leader'?`<span style="color:var(--primary);font-weight:700;">[${escHtml(t.member)}]</span> `:''}${escHtml(t.name)}</div>
+        <div class="mi-meta">${catBadge(t.category)} ${statusBadge(t.status)}${t.due?` 📅 ${fmt(t.due)}`:''}${t.progress?` · ${t.progress}%`:''}</div>
+      </div>`
+    ).join('') || `<div class="eisen-empty">해당 없음</div>`;
+    return `<div class="q q-${p}">
+      <div class="q-head"><span class="q-tag">${meta[p].tag}</span> ${meta[p].title} <span style="font-weight:400;color:var(--text-muted);">(${list.length})</span></div>
+      <div class="q-sub">${meta[p].sub}</div>
+      <div class="q-body">${items}</div>
+    </div>`;
+  }
+  // 배치: 위=긴급높음, 오른쪽=중요높음
+  //   [C 긴급高·중요低]  [A 긴급高·중요高]
+  //   [D 긴급低·중요低]  [B 긴급低·중요高]
+  return `<div class="eisen">
+    <div class="yl">⬆ 긴급도 높음</div>
+    ${cell('C')}${cell('A')}
+    ${cell('D')}${cell('B')}
+    <div class="xl">중요도 높음 ➡</div>
+  </div>`;
+}
+
 window.renderMyPriority = function(cont) {
-  const t = tasks.filter(t => t.member===session.name);
-  cont.innerHTML = `<div class="section-header-row"><h2>우선순위별 업무</h2></div><div class="matrix">${buildMatrix(t)}</div>`;
+  const t = tasks.filter(t => t.member===session.name && !t.isArchived);
+  cont.innerHTML = `
+    <div class="section-header-row"><h2>우선순위 4분면 (중요도 × 긴급도)</h2></div>
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;background:#EBF4FF;padding:8px 12px;border-radius:6px;">
+      가로(X) = 중요도, 세로(Y) = 긴급도 · 우측 위일수록 먼저 처리하세요.
+    </div>
+    ${buildQuadrant(t)}`;
 };
 
 const prioFilters = { member:'all' };
 window.renderPriority = function(cont) {
   if ($('prio-member-filter')) prioFilters.member = $('prio-member-filter').value;
-  let t = [...tasks];
+  let t = tasks.filter(x => !x.isArchived);
   if (prioFilters.member !== 'all') t = t.filter(x => x.member===prioFilters.member);
   cont.innerHTML = `
     <div class="section-header-row">
-      <h2>우선순위별 전체 현황</h2>
+      <h2>우선순위 4분면 (중요도 × 긴급도)</h2>
       <select id="prio-member-filter" onchange="prioFilters.member=this.value;renderPriority($('content'))">
         <option value="all"${prioFilters.member==='all'?' selected':''}>전체 팀원</option>
         ${(cfg.members||[]).map(m=>`<option value="${m}"${prioFilters.member===m?' selected':''}>${escHtml(m)}</option>`).join('')}
       </select>
     </div>
-    <div class="matrix">${buildMatrix(t)}</div>`;
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;background:#EBF4FF;padding:8px 12px;border-radius:6px;">
+      가로(X) = 중요도, 세로(Y) = 긴급도 · 우측 위일수록 먼저 처리하세요.
+    </div>
+    ${buildQuadrant(t)}`;
 };
 
 // ===================== MONTHLY TABLE =====================
