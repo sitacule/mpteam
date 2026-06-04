@@ -321,7 +321,9 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:var
 /* Cover page (print only) */
 .cover-page{display:none;}
 @media print{
-  .cover-page{display:block;page-break-after:always;text-align:center;padding:80px 40px;}
+  .cover-page{display:flex;flex-direction:column;justify-content:center;break-after:page;text-align:center;padding:40px;box-sizing:border-box;min-height:92vh;margin:0;}
+  .cover-page + .report-wrap{break-before:avoid;}
+  .report-wrap{margin-top:0;}
   .cover-page h1{font-size:28px;font-weight:700;color:#1A3A5C;margin-bottom:12px;}
   .cover-page .cover-sub{font-size:16px;color:#4A5568;margin-bottom:40px;}
   .cover-page .cover-meta{font-size:14px;color:#718096;line-height:2;}
@@ -396,6 +398,9 @@ body.readonly .ro-hide{display:none!important;}
 .exec-team-card h3{font-size:15px;font-weight:700;color:var(--primary);margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;}
 .exec-team-card .et-rate{font-size:24px;font-weight:700;}
 .exec-load-zone{border:2px dashed var(--border);border-radius:var(--radius);padding:30px;text-align:center;color:var(--text-muted);margin-bottom:20px;}
+
+/* [Phase9][7] 업무명 말줄임 + 마우스오버 전체표시(title) */
+.task-name-cell{font-weight:600;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
 /* History log */
 .history-log{margin-top:8px;border-top:1px dashed var(--border);padding-top:8px;}
@@ -673,6 +678,10 @@ body.readonly .ro-hide{display:none!important;}
       <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">선택된 진행률: <strong id="edit-prog-label">0%</strong></div>
     </div>
     <div class="form-row" style="margin-bottom:12px;">
+      <div class="form-group" style="margin-bottom:0;">
+        <label>수행일 <span style="font-size:11px;color:var(--text-muted);">(실제 한 날)</span></label>
+        <input type="date" id="edit-date">
+      </div>
       <div class="form-group" style="margin-bottom:0;">
         <label>완료예정일</label>
         <input type="date" id="edit-due">
@@ -1308,6 +1317,7 @@ window.syncFromSharedFolder = async function(silent) {
 
             mergedOtherTasks.push(...data.tasks);
             updatedMembers.push(`${memberName}(${data.tasks.length}건)`);
+            (window._memberSync = window._memberSync || {})[memberName] = data.syncedAt || new Date().toISOString();
 
             console.log(`[동기화] 읽음: ${memberName} - ${data.tasks.length}건`);
           } catch(fe) {
@@ -1330,6 +1340,7 @@ window.syncFromSharedFolder = async function(silent) {
 
             mergedOtherTasks.push(...data.tasks);
             updatedMembers.push(`${memberName}(${data.tasks.length}건)`);
+            (window._memberSync = window._memberSync || {})[memberName] = data.syncedAt || new Date().toISOString();
 
             console.log(`[동기화] 읽음: ${memberName} - ${data.tasks.length}건`);
             processedCount++;
@@ -1568,7 +1579,7 @@ function addFormHTML() {
         </div>
         <div class="form-group" style="margin-bottom:0;">
           <label>분야</label>
-          <select id="new-category">${catOptions('회계')}</select>
+          <select id="new-category">${(typeof catOptionsByFreq==='function'?catOptionsByFreq():catOptions('회계'))}</select>
         </div>
         <div class="form-group" style="margin-bottom:0;">
           <label>업무구분</label>
@@ -1580,6 +1591,10 @@ function addFormHTML() {
         </div>
       </div>
       <div class="form-row" style="margin-bottom:12px;">
+        <div class="form-group" style="margin-bottom:0;">
+          <label>수행일 <span style="font-size:11px;color:var(--text-muted);">(실제 한 날)</span></label>
+          <input type="date" id="new-date" value="${today()}">
+        </div>
         <div class="form-group" style="margin-bottom:0;">
           <label>완료예정일</label>
           <input type="date" id="new-due">
@@ -1593,8 +1608,21 @@ function addFormHTML() {
           </select>
         </div>
       </div>
+      <div class="form-row" style="margin-bottom:12px;">
+        <div class="form-group" style="margin-bottom:0;">
+          <label>
+            반복 설정
+            <span class="tooltip-wrap"><span class="tip">?</span><span class="tt">반복으로 지정하면 매월/매주 로그인 시<br>자동으로 새 업무가 생성됩니다.</span></span>
+          </label>
+          <select id="new-recurrence">
+            <option value="none" selected>반복 없음</option>
+            <option value="weekly">매주 반복</option>
+            <option value="monthly">매월 반복</option>
+          </select>
+        </div>
+      </div>
       <div style="margin:4px 0 12px;">
-        <span class="adv-toggle" id="add-detail-toggle" onclick="toggleAddDetail()">⚙️ 상세 입력 펼치기 ▼</span>
+        <span class="adv-toggle" id="add-detail-toggle" onclick="toggleAddDetail()">⚙️ 상세 입력(우선순위·진행내용·진행률·코멘트) 펼치기 ▼</span>
       </div>
       <div id="add-detail-fields" class="hidden">
         <div class="form-group">
@@ -1654,17 +1682,6 @@ function addFormHTML() {
         <div class="form-group">
           <label>이달의 코멘트 <span style="font-size:11px;color:var(--text-muted);">(월간보고서 반영)</span></label>
           <textarea id="new-month-comment" rows="2" placeholder="이 업무의 특이사항, 성과, 어려움 등을 자유롭게 적어주세요."></textarea>
-        </div>
-        <div class="form-group">
-          <label>
-            반복 설정
-            <span class="tooltip-wrap"><span class="tip">?</span><span class="tt">반복으로 지정하면 매월/매주 로그인 시<br>자동으로 새 업무가 생성됩니다.</span></span>
-          </label>
-          <select id="new-recurrence">
-            <option value="none" selected>반복 없음</option>
-            <option value="weekly">매주 반복</option>
-            <option value="monthly">매월 반복</option>
-          </select>
         </div>
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
@@ -2286,6 +2303,8 @@ window.renderMy = function(cont) {
   const myCompletedHidden = !window._showCompleted && myFilters.stat === 'all';
   const myCompletedCount = filtered.filter(t => t.status === '처리완료').length;
   if (myCompletedHidden) filtered = filtered.filter(t => t.status !== '처리완료');
+  // [Phase9][5] 완료 업무를 펼쳐 보더라도 아래로 가라앉힘
+  if (!myCompletedHidden && !mySort.col) filtered = [...filtered].sort((a,b)=>(a.status==='처리완료'?1:0)-(b.status==='처리완료'?1:0));
 
   const total=allMy.length, done=allMy.filter(t=>t.status==='처리완료').length,
     inprog=allMy.filter(t=>t.status==='진행중').length, hold=allMy.filter(t=>t.status==='보류').length,
@@ -2309,7 +2328,7 @@ window.renderMy = function(cont) {
         <td style="white-space:nowrap;">${fmt(t.date)}</td>
         <td>${catBadge(t.category)}</td>
         <td>${typeBadge(t.taskType)}</td>
-        <td><div style="font-weight:600;">${escHtml(t.name)}</div>${t.desc?`<div style="color:var(--text-muted);font-size:12px;margin-top:2px;">${escHtml(t.desc)}</div>`:''}</td>
+        <td style="max-width:260px;"><div class="task-name-cell" title="${escHtml(t.name)}">${escHtml(t.name)}</div>${t.desc?`<div style="color:var(--text-muted);font-size:12px;margin-top:2px;" title="${escHtml(t.desc)}">${escHtml(t.desc)}</div>`:''}</td>
         <td style="min-width:80px;">${progBar(t.progress)}</td>
         <td style="white-space:nowrap;">${fmt(t.due)}${od?'<br><span style="color:var(--accent);font-size:11px;">기한초과</span>':''}</td>
         <td>${prioBadge(t.priority)}</td>
@@ -2447,6 +2466,13 @@ window.renderAll = function(cont) {
       </div>
       <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">평균 진행률 ${avgProg}%</div>
       <div class="prog-wrap"><div class="prog-fill ${avgProg>=100?'done':''}" style="width:${avgProg}%"></div></div>
+      ${(function(){
+        const ts=(window._memberSync||{})[m];
+        if(!ts) return `<div style="font-size:11px;color:#A0AEC0;margin-top:8px;">📭 전송 기록 없음</div>`;
+        const days=Math.floor((Date.now()-new Date(ts))/86400000);
+        const stale=days>=3;
+        return `<div style="font-size:11px;margin-top:8px;color:${stale?'var(--accent)':'var(--text-muted)'};">${stale?'⚠️ ':'📤 '}마지막 전송: ${relDate(ts.slice(0,10))}${stale?' (오래됨)':''}</div>`;
+      })()}
     </div>`;
   }).join('');
 
@@ -2458,6 +2484,8 @@ window.renderAll = function(cont) {
   if (allFilters.dateFrom) filtered=filtered.filter(t=>(t.date||'')>=allFilters.dateFrom);
   if (allFilters.dateTo) filtered=filtered.filter(t=>(t.date||'')<=allFilters.dateTo);
   filtered = sortTasks(filtered, allSort.col, allSort.dir);
+  // [Phase9][5] 확인 완료된 업무는 아래로 가라앉힘(수동 정렬 없을 때)
+  if (!allSort.col) filtered = [...filtered].sort((a,b)=>((a.confirmedBy||a.status==='처리완료')?1:0)-((b.confirmedBy||b.status==='처리완료')?1:0));
 
   const sortOpts = ['','name','member','category','taskType','priority','progress','due','status']
     .map(v=>`<option value="${v}"${allSort.col===v?' selected':''}>${{'':"정렬없음",name:"업무명",member:"담당자",category:"분야",taskType:"구분",priority:"우선순위",progress:"진행률",due:"완료예정일",status:"상태"}[v]}</option>`).join('');
@@ -2482,7 +2510,7 @@ window.renderAll = function(cont) {
     return `<tr class="${rowCls}">
       <td><strong>${escHtml(t.member)}</strong></td>
       <td style="white-space:nowrap;">${fmt(t.date)}</td>
-      <td><div style="font-weight:600;">${escHtml(t.name)}</div>${t.desc?`<div style="color:var(--text-muted);font-size:12px;margin-top:2px;">${escHtml(t.desc)}</div>`:''}</td>
+      <td style="max-width:260px;"><div class="task-name-cell" title="${escHtml(t.name)}">${escHtml(t.name)}</div>${t.desc?`<div style="color:var(--text-muted);font-size:12px;margin-top:2px;" title="${escHtml(t.desc)}">${escHtml(t.desc)}</div>`:''}</td>
       <td>${catBadge(t.category)}</td>
       <td>${typeBadge(t.taskType)}</td>
       <td>${prioBadge(t.priority)}</td>
@@ -3037,6 +3065,7 @@ window.saveEdit = async function() {
     desc: $('edit-desc').value.trim(),
     taskType: $('edit-type').value,
     progress, priority, urgency, importance,
+    date: ($('edit-date')||{}).value || existing.date || today(),
     due: $('edit-due').value, status,
     note: $('edit-note').value.trim(),
     monthComment: ($('edit-month-comment')||{}).value?.trim() || '',
@@ -3045,6 +3074,7 @@ window.saveEdit = async function() {
   });
   closeModal('edit-modal');
   showToast('수정되었습니다.', 'success');
+  if (typeof autoSendIfFolder === 'function') autoSendIfFolder(); // [Phase9][2]
 };
 
 // addTask 재정의: urgency/importance 포함
@@ -3058,7 +3088,7 @@ window.addTask = async function() {
   const importance = ($('new-importance')||{}).value || 'low';
   const priority = ($('new-priority')||{}).value || 'D';
   const task = {
-    id: uid(), member: session.name, date: today(), name,
+    id: uid(), member: session.name, date: ($('new-date')||{}).value || today(), name,
     category: $('new-category').value,
     desc: $('new-desc').value.trim(),
     taskType: $('new-type').value,
@@ -3078,8 +3108,10 @@ window.addTask = async function() {
   const nr=$('new-recurrence'); if(nr) nr.value='none';
   const nd=$('new-due'); if(nd) nd.value='';
   const ns=$('new-status'); if(ns) ns.value='진행중';
+  const ndt=$('new-date'); if(ndt) ndt.value=today();
   setNewProg(0);
   showToast('업무가 등록되었습니다.', 'success');
+  if (typeof autoSendIfFolder === 'function') autoSendIfFolder(); // [Phase9][2] 자동 전송
 };
 
 // ── [19] 총괄 확인 토글 ──
@@ -3778,7 +3810,10 @@ const _p5OpenEdit = window.openEdit;
 window.openEdit = function(id) {
   _p5OpenEdit(id);
   const t = tasks.find(x => x.id === id);
-  if (t && t.adminComment && session.role === 'member') {
+  if (!t) return;
+  // [Phase9][1] 수행일 채우기
+  const ed = $('edit-date'); if (ed) ed.value = t.date || today();
+  if (t.adminComment && session.role === 'member') {
     markCommentSeen(t.id, t.adminComment);
     const badge = $('comment-alert-banner');
     if (badge) { setTimeout(() => { if (unseenCommentTasks().length === 0) badge.remove(); }, 300); }
@@ -4197,6 +4232,27 @@ window.renderCurrentTab = function() {
 };
 // 구버전 alias 재지정 (refresh가 옛 base를 가리키던 문제 방지)
 window.refresh = window.renderCurrentTab;
+
+// ===================== PHASE 9 ADDITIONS (실사용 마찰 제거) =====================
+
+// ── [2] 자동 전송 (공유폴더 연결 시 등록·수정 후 백그라운드 전송) ──
+let _autoSendTimer = null;
+window.autoSendIfFolder = function() {
+  if (cfg.storage !== 'folder' || !sharedFolderHandle || session.role !== 'member') return;
+  clearTimeout(_autoSendTimer);
+  _autoSendTimer = setTimeout(() => {
+    try { sendToSharedFolder(); } catch(e) { console.warn('[자동전송] 실패', e); }
+  }, 1500);
+};
+
+// ── [8] 자주 쓰는 분야 상단 정렬 ──
+window.catOptionsByFreq = function() {
+  const freq = {};
+  tasks.filter(t => t.member === session.name).forEach(t => { if(t.category) freq[t.category]=(freq[t.category]||0)+1; });
+  const ordered = [...CATEGORIES].sort((a,b)=>(freq[b]||0)-(freq[a]||0));
+  // 첫 옵션(가장 많이 쓴 분야)을 기본 선택
+  return ordered.map((c,i)=>`<option value="${c}"${i===0?' selected':''}>${c}${freq[c]?` (${freq[c]})`:''}</option>`).join('');
+};
 
 // ===================== START =====================
 window.$ = $;
