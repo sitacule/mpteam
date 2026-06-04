@@ -163,9 +163,13 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:var
 .matrix-item .mi-meta{color:var(--text-muted);font-size:12px;margin-top:2px;}
 
 /* Eisenhower 4-quadrant (X=중요도, Y=긴급도) */
-.eisen{display:grid;grid-template-columns:30px 1fr 1fr;grid-template-rows:1fr 1fr 30px;gap:12px;max-width:1100px;margin-top:4px;}
-.eisen .yl{grid-row:1 / span 2;grid-column:1;writing-mode:vertical-rl;transform:rotate(180deg);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--primary);font-size:13px;letter-spacing:1px;}
-.eisen .xl{grid-row:3;grid-column:2 / span 2;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--primary);font-size:13px;letter-spacing:1px;}
+.eisen{display:grid;grid-template-columns:56px 1fr 1fr;grid-template-rows:1fr 1fr 46px;gap:12px;max-width:1100px;margin-top:4px;}
+.eisen .yaxis{grid-row:1 / span 2;grid-column:1;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:6px 0;font-size:11px;font-weight:700;color:var(--primary);text-align:center;}
+.eisen .yaxis .axis-line{position:absolute;top:4px;bottom:4px;left:50%;transform:translateX(-50%);width:2px;background:var(--primary);opacity:.35;}
+.eisen .yaxis span{position:relative;z-index:1;background:var(--bg);padding:4px 0;line-height:1.35;}
+.eisen .xaxis{grid-row:3;grid-column:2 / span 2;position:relative;display:flex;align-items:center;justify-content:space-between;padding:0 6px;font-size:11px;font-weight:700;color:var(--primary);}
+.eisen .xaxis .axis-line{position:absolute;left:4px;right:4px;top:50%;transform:translateY(-50%);height:2px;background:var(--primary);opacity:.35;}
+.eisen .xaxis span{position:relative;z-index:1;background:var(--bg);padding:0 8px;}
 .eisen .q{border-radius:10px;padding:14px;min-height:170px;border:1px solid var(--border);display:flex;flex-direction:column;}
 .eisen .q .q-head{font-size:13px;font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:6px;}
 .eisen .q .q-sub{font-size:11px;color:var(--text-muted);margin-bottom:10px;}
@@ -178,7 +182,7 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:var
 .eisen .q-C .q-head{color:#2B6CB0;} .eisen .q-D .q-head{color:#4A5568;}
 .eisen .q-tag{font-size:10px;font-weight:700;padding:1px 6px;border-radius:3px;background:rgba(0,0,0,0.06);}
 .eisen-empty{color:var(--text-muted);font-size:12px;padding:6px;text-align:center;}
-@media(max-width:768px){.eisen{grid-template-columns:24px 1fr 1fr;}.eisen .q{min-height:130px;}}
+@media(max-width:768px){.eisen{grid-template-columns:44px 1fr 1fr;}.eisen .q{min-height:130px;}.eisen .yaxis,.eisen .xaxis{font-size:10px;}}
 
 /* Monthly table */
 .monthly-table{width:100%;border-collapse:collapse;}
@@ -1772,10 +1776,18 @@ function buildQuadrant(taskList) {
   //   [C 긴급高·중요低]  [A 긴급高·중요高]
   //   [D 긴급低·중요低]  [B 긴급低·중요高]
   return `<div class="eisen">
-    <div class="yl">⬆ 긴급도 높음</div>
+    <div class="yaxis">
+      <div class="axis-line"></div>
+      <span>긴급도<br>높음 ⬆</span>
+      <span>긴급도<br>낮음 ⬇</span>
+    </div>
     ${cell('C')}${cell('A')}
     ${cell('D')}${cell('B')}
-    <div class="xl">중요도 높음 ➡</div>
+    <div class="xaxis">
+      <div class="axis-line"></div>
+      <span>⬅ 중요도 낮음</span>
+      <span>중요도 높음 ➡</span>
+    </div>
   </div>`;
 }
 
