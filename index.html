@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>업무ON — 팀 업무보고 자동화 시스템</title>
+<title>Work Trace — 팀 업무보고 자동화 시스템</title>
 <style>
 :root {
   --primary: #1A3A5C;
@@ -448,7 +448,7 @@ body.readonly .ro-hide{display:none!important;}
 <!-- Setup Modal -->
 <div id="setup-modal" class="modal-overlay">
   <div class="modal">
-    <h2>📊 업무ON 시작하기</h2>
+    <h2>📊 Work Trace 시작하기</h2>
     <div style="background:linear-gradient(135deg,#1A3A5C,#2A5080);color:#fff;border-radius:8px;padding:14px 18px;margin-bottom:18px;">
       <div style="font-size:15px;font-weight:700;margin-bottom:4px;">매일 업무만 입력하세요. 주간·월간 보고서는 자동으로 만들어집니다.</div>
       <div style="font-size:12px;opacity:.85;">보고서 작성 시간 80% 절감 · 설치 불필요 · 서버 불필요</div>
@@ -760,7 +760,7 @@ body.readonly .ro-hide{display:none!important;}
 <!-- Main App -->
 <div id="app" class="hidden">
   <div id="header">
-    <h1 id="app-title">📊 업무ON</h1>
+    <h1 id="app-title">📊 Work Trace</h1>
     <div id="tab-row" style="display:contents;"></div>
     <div class="spacer"></div>
     <div id="sync-badge-wrap" style="display:flex;align-items:center;gap:8px;">
@@ -3235,7 +3235,7 @@ let execTeams = [];          // [29] 임원 다중팀 데이터
 function applyBranding() {
   const org = cfg.orgName || '경영기획팀';
   const titleEl = $('app-title');
-  if (titleEl) titleEl.innerHTML = `📊 업무ON <span style="font-weight:400;font-size:13px;opacity:.75;">| ${escHtml(org)}</span>`;
+  if (titleEl) titleEl.innerHTML = `📊 Work Trace <span style="font-weight:400;font-size:13px;opacity:.75;">| ${escHtml(org)}</span>`;
 }
 
 // ── [28] 역할 전환 (임원 추가) ──
@@ -3615,7 +3615,7 @@ const _p3ShowLogin = window.showLogin;
 window.showLogin = function() {
   _p3ShowLogin();
   const sub = $('login-subtitle');
-  if (sub) sub.textContent = `업무ON · ${cfg.orgName||'경영기획팀'} | 총괄: ${cfg.leader} | 팀원: ${(cfg.members||[]).join(', ')}`;
+  if (sub) sub.textContent = `Work Trace · ${cfg.orgName||'경영기획팀'} | 총괄: ${cfg.leader} | 팀원: ${(cfg.members||[]).join(', ')}`;
 };
 
 // ── init 확장 (읽기전용 모드 + 브랜딩) ──
