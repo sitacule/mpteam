@@ -1,0 +1,4164 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>업무ON — 팀 업무보고 자동화 시스템</title>
+<style>
+:root {
+  --primary: #1A3A5C;
+  --primary-light: #2A5080;
+  --accent: #E53E3E;
+  --accent-light: #FED7D7;
+  --bg: #F7F8FC;
+  --card: #FFFFFF;
+  --border: #E2E8F0;
+  --text: #2D3748;
+  --text-muted: #718096;
+  --success: #38A169;
+  --warning: #D69E2E;
+  --info: #3182CE;
+  --shadow: 0 2px 8px rgba(0,0,0,0.08);
+  --radius: 8px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:var(--bg);color:var(--text);font-size:14px;}
+.hidden{display:none!important;}
+
+/* Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;display:flex;align-items:center;justify-content:center;}
+.modal{background:#fff;border-radius:12px;padding:32px;width:min(560px,95vw);max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);}
+.modal h2{color:var(--primary);font-size:20px;margin-bottom:8px;}
+.modal .subtitle{color:var(--text-muted);font-size:13px;margin-bottom:24px;}
+.form-group{margin-bottom:16px;}
+.form-group label{display:block;font-weight:600;margin-bottom:6px;color:var(--text);}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:inherit;outline:none;transition:border-color .2s;}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--primary);}
+.form-group textarea{resize:vertical;min-height:70px;}
+.radio-group{display:flex;gap:12px;flex-wrap:wrap;}
+.radio-group label{display:flex;align-items:center;gap:6px;cursor:pointer;padding:8px 14px;border:1px solid var(--border);border-radius:6px;font-weight:400;}
+.radio-group input[type=radio]{accent-color:var(--primary);}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:10px 20px;border-radius:6px;border:none;cursor:pointer;font-size:14px;font-family:inherit;font-weight:600;transition:all .2s;}
+.btn-primary{background:var(--primary);color:#fff;}
+.btn-primary:hover{background:var(--primary-light);}
+.btn-accent{background:var(--accent);color:#fff;}
+.btn-accent:hover{background:#C53030;}
+.btn-outline{background:#fff;color:var(--primary);border:1px solid var(--primary);}
+.btn-outline:hover{background:#EBF4FF;}
+.btn-sm{padding:6px 12px;font-size:13px;}
+.btn-ghost{background:transparent;color:var(--text-muted);border:1px solid var(--border);}
+.btn-ghost:hover{background:var(--bg);}
+.btn-danger{background:#FFF5F5;color:var(--accent);border:1px solid var(--accent-light);}
+.btn-danger:hover{background:var(--accent-light);}
+
+/* Storage mode cards */
+.storage-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:4px;}
+.storage-card{border:2px solid var(--border);border-radius:8px;padding:14px;cursor:pointer;transition:all .2s;background:#fff;}
+.storage-card:hover{border-color:var(--primary);}
+.storage-card.selected{border-color:var(--primary);background:#EBF4FF;}
+.storage-card .sc-icon{font-size:22px;margin-bottom:6px;}
+.storage-card .sc-title{font-weight:700;font-size:13px;color:var(--primary);margin-bottom:4px;}
+.storage-card .sc-desc{font-size:11px;color:var(--text-muted);line-height:1.4;}
+
+/* Member chips */
+.chip-group{display:flex;gap:8px;flex-wrap:wrap;}
+.chip{padding:8px 16px;border-radius:20px;border:2px solid var(--border);cursor:pointer;font-weight:500;transition:all .2s;background:#fff;}
+.chip:hover{border-color:var(--primary);}
+.chip.selected{border-color:var(--primary);background:var(--primary);color:#fff;}
+
+/* Header */
+#header{background:var(--primary);color:#fff;padding:0 16px;display:flex;align-items:center;height:56px;gap:10px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,0.2);}
+#header h1{font-size:17px;font-weight:700;white-space:nowrap;}
+#header .spacer{flex:1;}
+#user-info{font-size:13px;opacity:.85;white-space:nowrap;}
+.header-btn{background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:#fff;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:13px;font-family:inherit;white-space:nowrap;}
+.header-btn:hover{background:rgba(255,255,255,0.25);}
+.send-btn{background:#E53E3E!important;border-color:#E53E3E!important;font-weight:700;}
+.send-btn:hover{background:#C53030!important;}
+
+/* Sync badge */
+.sync-badge{display:flex;align-items:center;gap:6px;font-size:12px;padding:5px 10px;border-radius:20px;white-space:nowrap;cursor:default;}
+.sync-badge.connected{background:rgba(56,161,105,0.25);color:#9AE6B4;}
+.sync-badge.disconnected{background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.5);}
+.sync-badge .dot{width:7px;height:7px;border-radius:50%;display:inline-block;}
+.sync-badge.connected .dot{background:#68D391;}
+.sync-badge.disconnected .dot{background:rgba(255,255,255,0.3);}
+.folder-select-btn{background:transparent;border:1px dashed rgba(255,255,255,0.4);color:rgba(255,255,255,0.7);padding:5px 10px;border-radius:6px;cursor:pointer;font-size:12px;font-family:inherit;}
+.folder-select-btn:hover{border-color:rgba(255,255,255,0.7);color:#fff;}
+
+/* Tabs */
+#tabs{background:#fff;border-bottom:1px solid var(--border);padding:0 24px;display:flex;gap:0;position:sticky;top:56px;z-index:99;overflow-x:auto;}
+.tab-btn{padding:14px 18px;border:none;background:transparent;cursor:pointer;font-size:14px;font-family:inherit;color:var(--text-muted);border-bottom:3px solid transparent;white-space:nowrap;font-weight:500;transition:all .2s;}
+.tab-btn.active{color:var(--primary);border-bottom-color:var(--primary);font-weight:700;}
+.tab-btn:hover{color:var(--primary);}
+
+/* Content */
+#content{padding:24px;max-width:1400px;margin:0 auto;}
+
+/* Folder alert banner */
+.folder-alert{background:#FFF5F5;border:1px solid #FC8181;border-radius:var(--radius);padding:12px 18px;margin-bottom:16px;display:flex;align-items:center;gap:12px;font-size:13px;}
+.folder-alert strong{color:var(--accent);}
+
+/* Cards */
+.card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;border:1px solid var(--border);}
+.stat-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-bottom:20px;}
+.stat-card{background:#fff;border-radius:var(--radius);padding:16px;border:1px solid var(--border);text-align:center;box-shadow:var(--shadow);}
+.stat-card .num{font-size:28px;font-weight:700;color:var(--primary);}
+.stat-card .num.red{color:var(--accent);}
+.stat-card .num.green{color:var(--success);}
+.stat-card .num.yellow{color:var(--warning);}
+.stat-card .lbl{font-size:12px;color:var(--text-muted);margin-top:4px;}
+
+/* Filters */
+.filter-bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:center;}
+.filter-bar select,.filter-bar input{padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit;background:#fff;outline:none;}
+.filter-bar select:focus,.filter-bar input:focus{border-color:var(--primary);}
+
+/* Task Table */
+.task-table{width:100%;border-collapse:collapse;}
+.task-table th{background:var(--primary);color:#fff;padding:10px 12px;text-align:left;font-weight:600;font-size:13px;white-space:nowrap;}
+.task-table td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:middle;font-size:13px;}
+.task-table tr:hover td{background:#F7FAFF;}
+.task-table tr.overdue td{background:#FFF5F5;}
+.task-table tr.due-soon td{background:#FFFBEB;}
+.task-table tr.in-progress td{background:#F0FFF4;}
+
+/* Badges */
+.badge{display:inline-block;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600;}
+.badge-중점{background:#FED7D7;color:#C53030;}
+.badge-일상{background:#BEE3F8;color:#2C5282;}
+.badge-익월{background:#FEEBC8;color:#C05621;}
+.badge-A{background:#FED7D7;color:#C53030;}
+.badge-B{background:#FEEBC8;color:#C05621;}
+.badge-C{background:#C6F6D5;color:#276749;}
+.badge-D{background:#E2E8F0;color:#4A5568;}
+.badge-진행중{background:#BEE3F8;color:#2C5282;}
+.badge-처리완료{background:#C6F6D5;color:#276749;}
+.badge-보류{background:#E2E8F0;color:#4A5568;}
+
+/* Category badges */
+.cat-회계,.cat-재무,.cat-공시{background:#EBF4FF;color:#2B6CB0;}
+.cat-기획,.cat-예산,.cat-청구{background:#F0FFF4;color:#276749;}
+.cat-자금,.cat-내부통제{background:#FAF5FF;color:#553C9A;}
+.cat-AI,.cat-IT{background:#E6FFFA;color:#285E61;}
+.cat-채용,.cat-인사,.cat-급여{background:#FFFAF0;color:#C05621;}
+.cat-법무,.cat-경영지원,.cat-기타{background:#F7FAFC;color:#4A5568;}
+
+/* Progress bar */
+.prog-wrap{width:100%;background:#E2E8F0;border-radius:10px;height:8px;min-width:60px;}
+.prog-fill{height:8px;border-radius:10px;background:var(--primary);transition:width .3s;}
+.prog-fill.done{background:var(--success);}
+.prog-fill.low{background:var(--warning);}
+
+/* Priority matrix */
+.matrix{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.matrix-cell{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:16px;}
+.matrix-cell h3{font-size:13px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+.matrix-item{padding:8px 10px;border-left:3px solid;margin-bottom:6px;border-radius:0 4px 4px 0;background:#FAFAFA;font-size:13px;}
+.matrix-item .mi-name{font-weight:600;}
+.matrix-item .mi-meta{color:var(--text-muted);font-size:12px;margin-top:2px;}
+
+/* Monthly table */
+.monthly-table{width:100%;border-collapse:collapse;}
+.monthly-table th,.monthly-table td{padding:10px 12px;border:1px solid var(--border);font-size:13px;}
+.monthly-table th{background:#EBF4FF;color:var(--primary);font-weight:600;}
+
+/* Member cards */
+.member-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;margin-bottom:20px;}
+.member-card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;border:1px solid var(--border);}
+.member-card h3{font-size:15px;font-weight:700;color:var(--primary);margin-bottom:12px;}
+.member-card .mc-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;}
+.member-card .mc-stat{text-align:center;}
+.member-card .mc-stat .n{font-size:20px;font-weight:700;}
+.member-card .mc-stat .l{font-size:11px;color:var(--text-muted);}
+
+/* Issue band */
+.issue-band{background:#FFF5F5;border:1px solid #FC8181;border-radius:var(--radius);padding:14px 18px;margin-bottom:20px;}
+.issue-band h3{color:var(--accent);font-size:14px;font-weight:700;margin-bottom:10px;}
+.issue-item{display:flex;gap:12px;align-items:center;padding:6px 0;border-bottom:1px solid #FED7D7;font-size:13px;flex-wrap:wrap;}
+.issue-item:last-child{border-bottom:none;}
+
+/* PPTX-style monthly report */
+.pptx-report{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;}
+.pptx-member-block{background:#fff;border:1px solid var(--border);border-radius:var(--radius);margin-bottom:24px;overflow:hidden;box-shadow:var(--shadow);}
+.pptx-member-header{background:var(--primary);color:#fff;padding:14px 20px;font-size:17px;font-weight:700;}
+.pptx-member-body{padding:20px;}
+.pptx-section{margin-bottom:20px;}
+.pptx-section-label{display:inline-block;padding:5px 14px;border-radius:4px;font-size:13px;font-weight:700;margin-bottom:12px;}
+.pptx-section-label.jungjeom{background:#FED7D7;color:#C53030;border:1px solid #FC8181;}
+.pptx-section-label.ilsang{background:#BEE3F8;color:#2C5282;border:1px solid #90CDF4;}
+.pptx-section-label.ikmol{background:#FEEBC8;color:#C05621;border:1px solid #F6AD55;}
+.pptx-cat-group{margin-bottom:12px;}
+.pptx-cat-label{font-weight:700;color:var(--primary);font-size:13px;margin-bottom:6px;display:flex;align-items:center;gap:8px;}
+.pptx-cat-label span{background:#EBF4FF;color:#2B6CB0;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;}
+.pptx-task-item{padding:6px 12px;border-left:3px solid var(--border);margin-bottom:4px;margin-left:8px;font-size:13px;line-height:1.6;}
+.pptx-task-item .task-name{font-weight:600;}
+.pptx-task-item .task-desc{color:var(--text-muted);margin-top:2px;}
+.pptx-task-item .task-prog{display:inline-block;margin-left:8px;font-size:12px;font-weight:700;}
+.pptx-task-item .task-prog.p100{color:var(--success);}
+.pptx-task-item .task-prog.p50{color:var(--warning);}
+.pptx-task-item .task-note{background:#FFFBEB;border:1px solid #F6E05E;border-radius:4px;padding:3px 8px;font-size:12px;color:#744210;margin-top:4px;display:inline-block;}
+
+/* Weekly report */
+.report-wrap{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);}
+.report-header{border-bottom:3px solid var(--primary);padding-bottom:12px;margin-bottom:20px;}
+.report-title{font-size:22px;font-weight:700;color:var(--primary);}
+.report-meta{color:var(--text-muted);font-size:13px;margin-top:4px;}
+.report-section{margin-bottom:20px;}
+.report-section-title{font-size:14px;font-weight:700;color:#fff;padding:8px 14px;border-radius:4px;margin-bottom:12px;}
+.report-section-title.jungjeom{background:#C53030;}
+.report-section-title.ilsang{background:#2C5282;}
+.report-section-title.ikmol{background:#C05621;}
+.week-task-row{padding:10px 0;border-bottom:1px solid var(--border);display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:start;}
+
+/* Add task form */
+.add-form{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:20px;box-shadow:var(--shadow);}
+.add-form h3{font-size:15px;font-weight:700;color:var(--primary);}
+.form-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;}
+
+/* Share link box */
+.share-box{background:#F7FAFF;border:1px solid #BEE3F8;border-radius:6px;padding:12px;margin-top:16px;}
+.share-url{width:100%;padding:8px;border:1px solid var(--border);border-radius:4px;font-size:12px;color:var(--text-muted);background:#fff;}
+
+/* Empty state */
+.empty-state{text-align:center;padding:48px 20px;color:var(--text-muted);}
+.empty-state .icon{font-size:40px;margin-bottom:12px;}
+
+/* Section header row */
+.section-header-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;}
+.section-header-row h2{font-size:18px;font-weight:700;color:var(--primary);}
+
+/* Table container */
+.table-wrap{overflow-x:auto;border-radius:var(--radius);border:1px solid var(--border);}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:8px;background:#2D3748;color:#fff;font-size:13px;z-index:9999;transform:translateY(20px);opacity:0;transition:all .3s;box-shadow:0 4px 20px rgba(0,0,0,0.3);}
+.toast.show{transform:translateY(0);opacity:1;}
+.toast.toast-success{background:#276749;}
+.toast.toast-error{background:#9B2C2C;}
+.toast.toast-info{background:#2C5282;}
+.toast.toast-warning{background:#C05621;}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:6px;height:6px;}
+::-webkit-scrollbar-track{background:#F1F1F1;}
+::-webkit-scrollbar-thumb{background:#CBD5E0;border-radius:3px;}
+
+/* Tooltips */
+.tooltip-wrap{position:relative;display:inline-flex;align-items:center;}
+.tooltip-wrap .tt{display:none;position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:#2D3748;color:#fff;font-size:11px;padding:6px 10px;border-radius:4px;white-space:nowrap;z-index:9999;pointer-events:none;line-height:1.5;max-width:220px;white-space:normal;text-align:left;}
+.tooltip-wrap .tt::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:#2D3748;}
+.tooltip-wrap:hover .tt{display:block;}
+.tip{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;background:#CBD5E0;color:#4A5568;font-size:9px;cursor:default;margin-left:4px;font-weight:700;flex-shrink:0;}
+
+/* Progress buttons */
+.prog-btns{display:flex;gap:5px;flex-wrap:wrap;margin-top:2px;}
+.prog-btn{padding:5px 10px;border:1px solid var(--border);border-radius:4px;cursor:pointer;font-size:12px;font-family:inherit;background:#fff;transition:all .15s;font-weight:600;}
+.prog-btn:hover{border-color:var(--primary);color:var(--primary);}
+.prog-btn.active{background:var(--primary);color:#fff;border-color:var(--primary);}
+
+/* Sort headers */
+.sortable{cursor:pointer;user-select:none;white-space:nowrap;}
+.sortable:hover{background:rgba(255,255,255,0.15);}
+.sort-ic{margin-left:3px;opacity:.7;font-size:10px;}
+
+/* Undo toast */
+.toast-undo-row{display:flex;align-items:center;gap:10px;}
+.toast-undo-row button{background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.5);color:#fff;padding:3px 10px;border-radius:4px;cursor:pointer;font-size:12px;font-family:inherit;}
+.toast-undo-row button:hover{background:rgba(255,255,255,0.35);}
+
+/* Date range */
+.date-range{display:flex;align-items:center;gap:4px;}
+.date-range input{padding:7px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;width:115px;outline:none;}
+.date-range input:focus{border-color:var(--primary);}
+.date-range span{color:var(--text-muted);font-size:11px;}
+
+/* Advanced settings */
+.adv-toggle{font-size:12px;color:var(--primary);cursor:pointer;margin-bottom:8px;display:inline-block;text-decoration:underline;}
+.adv-section{background:#F7F8FC;border:1px solid var(--border);border-radius:6px;padding:14px;margin-bottom:12px;}
+
+/* Data management */
+.data-mgmt{background:#F7F8FC;border:1px solid var(--border);border-radius:var(--radius);padding:14px 18px;margin-bottom:16px;}
+.data-mgmt h4{font-size:13px;font-weight:700;color:var(--primary);margin-bottom:10px;}
+.data-mgmt .btn-row{display:flex;gap:8px;flex-wrap:wrap;}
+
+/* Dashboard action cards */
+.action-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:20px;}
+.action-card{background:#fff;border-radius:var(--radius);padding:18px;border:1px solid var(--border);box-shadow:var(--shadow);}
+.action-card.red{border-left:4px solid var(--accent);}
+.action-card.orange{border-left:4px solid var(--warning);}
+.action-card.blue{border-left:4px solid var(--info);}
+.action-card h3{font-size:13px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+.action-item{padding:8px 10px;border-radius:6px;background:#F7F8FC;margin-bottom:6px;font-size:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.action-item:last-child{margin-bottom:0;}
+
+/* Trend badges */
+.trend-up{color:#38A169;font-weight:700;}
+.trend-dn{color:#E53E3E;font-weight:700;}
+.trend-eq{color:#718096;font-weight:600;}
+
+/* Executive summary box */
+.exec-summary{background:linear-gradient(135deg,#1A3A5C 0%,#2A5080 100%);color:#fff;border-radius:var(--radius);padding:24px;margin-bottom:24px;box-shadow:0 4px 16px rgba(26,58,92,0.3);}
+.exec-summary h2{font-size:18px;font-weight:700;margin-bottom:4px;}
+.exec-summary .sub{font-size:13px;opacity:.8;margin-bottom:20px;}
+.exec-kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:12px;margin-bottom:20px;}
+.exec-kpi-item{background:rgba(255,255,255,0.12);border-radius:8px;padding:12px;text-align:center;}
+.exec-kpi-item .kv{font-size:26px;font-weight:700;}
+.exec-kpi-item .kl{font-size:11px;opacity:.8;margin-top:2px;}
+.exec-list{margin-bottom:12px;}
+.exec-list h4{font-size:12px;font-weight:700;opacity:.85;margin-bottom:8px;letter-spacing:.5px;text-transform:uppercase;}
+.exec-list-item{background:rgba(255,255,255,0.1);border-radius:6px;padding:7px 12px;font-size:12px;margin-bottom:4px;display:flex;align-items:center;gap:8px;}
+.exec-interp{background:rgba(255,255,255,0.08);border-radius:6px;padding:12px 14px;font-size:12px;line-height:1.7;opacity:.9;}
+
+/* Monthly comment */
+.month-comment-box{background:#FFFBEB;border:1px solid #F6E05E;border-radius:6px;padding:10px 14px;font-size:13px;margin-top:8px;line-height:1.6;}
+.month-comment-box .mc-label{font-weight:700;color:#744210;margin-bottom:4px;font-size:12px;}
+
+/* Cover page (print only) */
+.cover-page{display:none;}
+@media print{
+  .cover-page{display:block;page-break-after:always;text-align:center;padding:80px 40px;}
+  .cover-page h1{font-size:28px;font-weight:700;color:#1A3A5C;margin-bottom:12px;}
+  .cover-page .cover-sub{font-size:16px;color:#4A5568;margin-bottom:40px;}
+  .cover-page .cover-meta{font-size:14px;color:#718096;line-height:2;}
+  .exec-summary{color:#000;background:#F7F8FC;-webkit-print-color-adjust:exact;}
+  .exec-kpi-item{background:#EBF4FF;}
+  .exec-list-item{background:#F0F0F0;}
+  #header,#tabs,.filter-bar,.add-form,.btn,button,.header-btn,.folder-alert,.data-mgmt,.action-grid{display:none!important;}
+  #content{padding:0;max-width:100%;}
+  .pptx-member-block{break-inside:avoid;box-shadow:none;border:1px solid #ccc;}
+  body{background:#fff;}
+  .report-wrap{box-shadow:none;border:none;}
+  .exec-summary{page-break-after:avoid;}
+}
+
+/* Print */
+@media print{
+  #header,#tabs,.filter-bar,.add-form,.btn,button,.header-btn,.folder-alert,.data-mgmt{display:none!important;}
+  #content{padding:0;max-width:100%;}
+  .pptx-member-block{break-inside:avoid;box-shadow:none;border:1px solid #ccc;}
+  body{background:#fff;}
+  .report-wrap{box-shadow:none;border:none;}
+}
+
+/* Confirm badge */
+.confirmed-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;background:#C6F6D5;color:#276749;}
+.unconfirmed-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;background:#E2E8F0;color:#4A5568;}
+.admin-comment-box{background:#EBF4FF;border:1px solid #90CDF4;border-radius:5px;padding:6px 10px;font-size:12px;color:#2C5282;margin-top:4px;}
+
+/* Template modal */
+.template-list{max-height:300px;overflow-y:auto;}
+.template-item{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border:1px solid var(--border);border-radius:6px;margin-bottom:8px;background:#fff;}
+.template-item:hover{border-color:var(--primary);}
+.template-item .ti-name{font-weight:600;font-size:13px;}
+.template-item .ti-meta{font-size:12px;color:var(--text-muted);margin-top:2px;}
+
+/* Urgency/Importance grid */
+.urg-imp-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.priority-auto-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:6px;font-size:13px;font-weight:700;margin-top:8px;}
+
+/* Context warning */
+.ctx-warning{background:#FFFBEB;border:1px solid #F6AD55;border-radius:6px;padding:10px 14px;font-size:12px;color:#744210;margin-bottom:12px;display:flex;align-items:flex-start;gap:8px;}
+.ctx-warning .cw-icon{font-size:16px;flex-shrink:0;}
+
+/* Read-only mode */
+body.readonly .add-form,
+body.readonly .data-mgmt,
+body.readonly #send-btn,
+body.readonly #sync-btn,
+body.readonly .folder-select-btn,
+body.readonly .btn-danger,
+body.readonly .task-table td button,
+body.readonly .ro-hide{display:none!important;}
+.ro-banner{background:#FAF5FF;border:1px solid #D6BCFA;color:#553C9A;border-radius:var(--radius);padding:10px 16px;font-size:13px;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+
+/* Browser compat banner */
+.compat-banner{background:#FFF5F5;border:1px solid #FC8181;color:#C53030;border-radius:var(--radius);padding:10px 16px;font-size:12px;margin:0 24px 0;display:flex;align-items:center;gap:8px;}
+
+/* Onboarding tour */
+.tour-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:2000;display:flex;align-items:center;justify-content:center;}
+.tour-card{background:#fff;border-radius:12px;padding:28px;width:min(440px,92vw);box-shadow:0 20px 60px rgba(0,0,0,0.4);text-align:center;}
+.tour-card .tour-ic{font-size:40px;margin-bottom:12px;}
+.tour-card h3{color:var(--primary);font-size:19px;margin-bottom:10px;}
+.tour-card p{color:var(--text);font-size:14px;line-height:1.7;margin-bottom:20px;}
+.tour-dots{display:flex;gap:6px;justify-content:center;margin-bottom:18px;}
+.tour-dots .d{width:8px;height:8px;border-radius:50%;background:var(--border);}
+.tour-dots .d.active{background:var(--primary);}
+.tour-btns{display:flex;gap:10px;justify-content:center;}
+
+/* Exec multi-team view */
+.exec-team-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-bottom:20px;}
+.exec-team-card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;border:1px solid var(--border);border-top:4px solid var(--primary);}
+.exec-team-card h3{font-size:15px;font-weight:700;color:var(--primary);margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;}
+.exec-team-card .et-rate{font-size:24px;font-weight:700;}
+.exec-load-zone{border:2px dashed var(--border);border-radius:var(--radius);padding:30px;text-align:center;color:var(--text-muted);margin-bottom:20px;}
+
+/* History log */
+.history-log{margin-top:8px;border-top:1px dashed var(--border);padding-top:8px;}
+.history-item{font-size:11px;color:var(--text-muted);padding:2px 0;}
+.history-item .ht-time{color:var(--primary);font-weight:600;}
+
+/* [Phase6][5] 인쇄 색상 보존 — 배경그래픽 옵션과 무관하게 강제 출력 */
+.exec-summary,.exec-kpi-item,.exec-list-item,.pptx-section-label,.report-section-title,
+.badge,.confirmed-badge,.prog-fill,.cover-page h1{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;}
+
+/* [Phase6][3] 가치 증명 위젯 */
+.value-widget{background:linear-gradient(135deg,#276749,#2F855A);color:#fff;border-radius:var(--radius);padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;box-shadow:var(--shadow);}
+.value-widget .vw-ic{font-size:28px;}
+.value-widget .vw-main{flex:1;min-width:180px;}
+.value-widget .vw-num{font-size:22px;font-weight:700;}
+.value-widget .vw-sub{font-size:12px;opacity:.85;}
+.value-widget .vw-stat{text-align:center;}
+.value-widget .vw-stat .n{font-size:20px;font-weight:700;}
+.value-widget .vw-stat .l{font-size:11px;opacity:.85;}
+
+/* [Phase6][6] 한계 안내 */
+.limit-list{font-size:13px;line-height:1.8;color:var(--text);}
+.limit-list li{margin-bottom:8px;}
+@media print{.value-widget{display:none!important;}}
+
+/* Mobile responsive */
+@media(max-width:768px){
+  #header{flex-wrap:wrap;height:auto;padding:8px 12px;gap:6px;}
+  #header h1{font-size:14px;}
+  #tabs{padding:0 8px;}
+  .tab-btn{padding:10px 10px;font-size:13px;}
+  #content{padding:12px;}
+  .stat-cards{grid-template-columns:repeat(3,1fr);}
+  .member-cards{grid-template-columns:1fr;}
+  .matrix{grid-template-columns:1fr;}
+  .form-row{grid-template-columns:1fr;}
+  .storage-cards{grid-template-columns:1fr;}
+  .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .task-table{min-width:700px;}
+  .filter-bar{gap:6px;}
+  .filter-bar select,.filter-bar input{font-size:12px;padding:6px 8px;}
+  .modal{padding:20px;}
+  .prog-btns{gap:3px;}
+  .prog-btn{padding:5px 7px;font-size:11px;}
+}
+</style>
+</head>
+<body>
+
+<!-- Setup Modal -->
+<div id="setup-modal" class="modal-overlay">
+  <div class="modal">
+    <h2>📊 업무ON 시작하기</h2>
+    <div style="background:linear-gradient(135deg,#1A3A5C,#2A5080);color:#fff;border-radius:8px;padding:14px 18px;margin-bottom:18px;">
+      <div style="font-size:15px;font-weight:700;margin-bottom:4px;">매일 업무만 입력하세요. 주간·월간 보고서는 자동으로 만들어집니다.</div>
+      <div style="font-size:12px;opacity:.85;">보고서 작성 시간 80% 절감 · 설치 불필요 · 서버 불필요</div>
+    </div>
+    <p class="subtitle">팀 정보를 입력하면 바로 시작할 수 있습니다.</p>
+    <div class="form-group">
+      <label>저장 방식</label>
+      <div style="background:#EBF4FF;border:1px solid #90CDF4;border-radius:6px;padding:10px 14px;font-size:13px;color:#2C5282;margin-bottom:8px;">
+        📁 <strong>공유폴더(권장)</strong> — 회사 공유폴더에 JSON으로 저장, 서버 불필요
+      </div>
+      <span class="adv-toggle" onclick="toggleAdvStorage()">⚙️ 고급 저장 방식 변경 ▼</span>
+      <div id="adv-storage-section" class="adv-section hidden">
+        <div class="storage-cards" id="storage-cards">
+          <div class="storage-card" data-val="local" onclick="selectStorage('local')">
+            <div class="sc-icon">💾</div><div class="sc-title">로컬 저장</div>
+            <div class="sc-desc">이 브라우저에만 저장. 오프라인 가능.</div>
+          </div>
+          <div class="storage-card selected" data-val="folder" onclick="selectStorage('folder')">
+            <div class="sc-icon">📁</div><div class="sc-title">공유폴더</div>
+            <div class="sc-desc">JSON 파일로 저장. 팀원 간 공유 가능.</div>
+          </div>
+          <div class="storage-card" data-val="firebase" onclick="selectStorage('firebase')">
+            <div class="sc-icon">☁️</div><div class="sc-title">Firebase</div>
+            <div class="sc-desc">Firestore 실시간 동기화. 별도 설정 필요.</div>
+          </div>
+        </div>
+      </div>
+      <input type="hidden" id="storage-value" value="folder">
+    </div>
+    <div id="firebase-fields" class="hidden">
+      <div class="form-group">
+        <label>Firebase API Key</label>
+        <input type="text" id="fb-apikey" placeholder="AIzaSy...">
+      </div>
+      <div class="form-group">
+        <label>Project ID</label>
+        <input type="text" id="fb-projectid" placeholder="my-project-id">
+      </div>
+      <div class="form-group">
+        <label>App ID</label>
+        <input type="text" id="fb-appid" placeholder="1:123456789:web:...">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>조직명 <span style="font-size:11px;color:var(--text-muted);">(보고서 커버 페이지에 표시)</span></label>
+      <input type="text" id="setup-orgname" placeholder="예: 경영기획팀">
+    </div>
+    <div class="form-group">
+      <label>총괄 조회 이름</label>
+      <input type="text" id="setup-leader" placeholder="예: 김팀장">
+    </div>
+    <div class="form-group">
+      <label>팀원 이름 (쉼표로 구분)</label>
+      <input type="text" id="setup-members" placeholder="예: 신해리, 이민준, 박소연, 최재현">
+    </div>
+    <div class="form-group">
+      <label>총괄 조회 비밀번호 (선택)</label>
+      <input type="password" id="setup-pass" placeholder="비워두면 비밀번호 없음">
+    </div>
+    <div class="form-group">
+      <label>또는 설정 파일(JSON) 불러오기</label>
+      <div style="display:flex;gap:8px;">
+        <input type="file" id="import-setup-file" accept=".json" style="flex:1;padding:6px;">
+        <button class="btn btn-outline btn-sm" onclick="importSetupFile()">📂 불러오기</button>
+      </div>
+    </div>
+    <div id="folder-mode-note" style="background:#EBF4FF;border:1px solid #90CDF4;border-radius:6px;padding:10px 14px;font-size:12px;color:#2C5282;margin-bottom:12px;">
+      📁 공유폴더 모드 선택 후, 앱 로그인 완료 시 폴더를 선택하세요.
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <button class="btn btn-primary" onclick="completeSetup()">✅ 설정 완료</button>
+    </div>
+  </div>
+</div>
+
+<!-- Login Modal -->
+<div id="login-modal" class="modal-overlay hidden">
+  <div class="modal">
+    <h2>🔐 로그인</h2>
+    <p class="subtitle" id="login-subtitle">경영기획팀 업무보고 시스템</p>
+    <div class="form-group">
+      <label>역할 선택</label>
+      <div class="radio-group">
+        <label><input type="radio" name="role" value="member" checked id="role-member" onchange="onRoleChange()"> 👤 팀원</label>
+        <label><input type="radio" name="role" value="leader" id="role-leader" onchange="onRoleChange()"> 📋 팀장(총괄)</label>
+        <label><input type="radio" name="role" value="exec" id="role-exec" onchange="onRoleChange()"> 🏢 임원(다중팀)</label>
+      </div>
+    </div>
+    <div id="member-select-area" class="form-group">
+      <label>팀원 선택</label>
+      <div id="member-chips" class="chip-group"></div>
+    </div>
+    <div id="leader-pass-area" class="form-group hidden">
+      <label>팀장 비밀번호</label>
+      <input type="password" id="login-pass" placeholder="비밀번호 입력">
+    </div>
+    <div id="exec-area" class="form-group hidden">
+      <label>임원 종합 조회</label>
+      <div style="background:#FAF5FF;border:1px solid #D6BCFA;border-radius:6px;padding:10px 14px;font-size:12px;color:#553C9A;">
+        🏢 여러 팀의 데이터를 통합 조회합니다. 로그인 후 각 팀의 백업(JSON) 파일을 불러오세요.
+      </div>
+    </div>
+    <div class="form-group">
+      <label>설정 파일 불러오기 (선택)</label>
+      <div style="display:flex;gap:8px;">
+        <input type="file" id="import-login-file" accept=".json" style="flex:1;padding:6px;">
+        <button class="btn btn-outline btn-sm" onclick="importLoginFile()">📂 불러오기</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:space-between;margin-top:24px;flex-wrap:wrap;">
+      <button class="btn btn-ghost btn-sm" onclick="openSetupFromLogin()">⚙️ 설정 변경</button>
+      <button class="btn btn-primary" onclick="doLogin()">로그인 →</button>
+    </div>
+  </div>
+</div>
+
+<!-- Share Link Modal -->
+<div id="share-modal" class="modal-overlay hidden">
+  <div class="modal">
+    <h2>🔗 설정 공유</h2>
+    <p class="subtitle">아래 링크를 팀원들에게 공유하면 설정이 자동으로 적용됩니다.</p>
+    <div id="share-folder-note" class="hidden" style="background:#EBF4FF;border:1px solid #90CDF4;border-radius:6px;padding:10px 14px;font-size:13px;color:#2C5282;margin-bottom:12px;">
+      📁 공유폴더 모드: 팀원들에게 아래 링크를 공유하거나, 공유폴더에 <strong>team_config.json</strong>을 저장하세요.
+    </div>
+    <div class="share-box">
+      <input type="text" id="share-url-input" class="share-url" readonly>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;">
+      <button class="btn btn-primary" onclick="copyShareLink()">📋 링크 복사</button>
+      <button class="btn btn-outline" onclick="exportConfig()">💾 JSON 내보내기</button>
+      <button class="btn btn-outline" id="save-team-config-btn" onclick="saveTeamConfigToFolder()">📁 폴더에 저장</button>
+      <button class="btn btn-ghost" onclick="closeModal('share-modal')">닫기</button>
+    </div>
+    <hr style="border:none;border-top:1px solid var(--border);margin:18px 0;">
+    <div style="font-size:13px;font-weight:700;color:var(--primary);margin-bottom:6px;">👁️ 읽기 전용 링크 (임원·열람용) <span style="font-size:10px;background:#FAF5FF;color:#553C9A;border:1px solid #D6BCFA;border-radius:3px;padding:1px 5px;font-weight:700;">실험적</span></div>
+    <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">현재 화면 데이터를 수정 불가 상태로 공유합니다. 업무가 많으면 링크가 길어져 잘릴 수 있으며, 이 경우 자동으로 읽기전용 파일을 내려받습니다(임원뷰에서 불러오기).</p>
+    <div class="share-box">
+      <input type="text" id="readonly-url-input" class="share-url" readonly placeholder="아래 버튼을 눌러 생성">
+    </div>
+    <div style="margin-top:10px;">
+      <button class="btn btn-outline btn-sm" onclick="genReadOnlyLink()">🔗 읽기전용 링크 생성·복사</button>
+    </div>
+  </div>
+</div>
+
+<!-- Task Edit Modal -->
+<div id="edit-modal" class="modal-overlay hidden">
+  <div class="modal">
+    <h2>✏️ 업무 수정</h2>
+    <input type="hidden" id="edit-task-id">
+    <div class="form-row" style="margin-bottom:12px;">
+      <div class="form-group" style="margin-bottom:0;">
+        <label>업무명 *</label>
+        <input type="text" id="edit-name">
+      </div>
+      <div class="form-group" style="margin-bottom:0;">
+        <label>분야 *</label>
+        <select id="edit-category"></select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>진행내용</label>
+      <textarea id="edit-desc" rows="3"></textarea>
+    </div>
+    <div class="form-row" style="margin-bottom:12px;">
+      <div class="form-group" style="margin-bottom:0;">
+        <label>
+          업무구분
+          <span class="tooltip-wrap"><span class="tip">?</span><span class="tt">중점: 이번 달 핵심 업무<br>일상: 정기적 반복 업무<br>익월: 다음 달 예정 업무</span></span>
+        </label>
+        <select id="edit-type">
+          <option value="중점">중점</option>
+          <option value="일상">일상</option>
+          <option value="익월">익월</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin-bottom:0;">
+        <label>상태</label>
+        <select id="edit-status" onchange="onEditStatusChange(this.value)">
+          <option value="진행중">진행중</option>
+          <option value="처리완료">처리완료</option>
+          <option value="보류">보류</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>
+        우선순위 자동 계산
+        <span class="tooltip-wrap"><span class="tip">?</span><span class="tt">긴급도+중요도 조합으로<br>우선순위가 자동 결정됩니다.<br>A(긴급+중요) B(중요) C(긴급) D(일반)</span></span>
+      </label>
+      <div class="urg-imp-grid">
+        <div>
+          <label style="font-size:12px;color:var(--text-muted);">긴급도</label>
+          <select id="edit-urgency" onchange="calcEditPriority()">
+            <option value="high">높음 (즉시 처리)</option>
+            <option value="medium">보통 (이번 주)</option>
+            <option value="low">낮음 (이번 달)</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--text-muted);">중요도</label>
+          <select id="edit-importance" onchange="calcEditPriority()">
+            <option value="high">높음 (핵심 업무)</option>
+            <option value="medium">보통</option>
+            <option value="low">낮음 (보조 업무)</option>
+          </select>
+        </div>
+      </div>
+      <div id="edit-priority-display" class="priority-auto-badge" style="background:#FED7D7;color:#C53030;">자동 계산: PA</div>
+      <input type="hidden" id="edit-priority" value="A">
+    </div>
+    <div class="form-group">
+      <label>진행률 (%)</label>
+      <div class="prog-btns" id="edit-prog-btns">
+        <button type="button" class="prog-btn" onclick="setEditProg(0)">0%</button>
+        <button type="button" class="prog-btn" onclick="setEditProg(25)">25%</button>
+        <button type="button" class="prog-btn" onclick="setEditProg(50)">50%</button>
+        <button type="button" class="prog-btn" onclick="setEditProg(75)">75%</button>
+        <button type="button" class="prog-btn" onclick="setEditProg(100)">100%</button>
+      </div>
+      <input type="hidden" id="edit-progress" value="0">
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">선택된 진행률: <strong id="edit-prog-label">0%</strong></div>
+    </div>
+    <div class="form-row" style="margin-bottom:12px;">
+      <div class="form-group" style="margin-bottom:0;">
+        <label>완료예정일</label>
+        <input type="date" id="edit-due">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>비고/이슈</label>
+      <textarea id="edit-note" rows="2"></textarea>
+    </div>
+    <div class="form-group">
+      <label>
+        이달의 코멘트
+        <span class="tooltip-wrap"><span class="tip">?</span><span class="tt">월간보고서에 그대로 반영됩니다.<br>특이사항·성과·어려움 등을 자유롭게 서술하세요.</span></span>
+      </label>
+      <textarea id="edit-month-comment" rows="2" placeholder="이달 특이사항, 성과, 어려움 등 (월간보고서에 반영)"></textarea>
+    </div>
+    <div id="leader-edit-section" class="hidden">
+      <hr style="border:none;border-top:1px solid var(--border);margin:16px 0;">
+      <div style="font-size:12px;font-weight:700;color:var(--primary);margin-bottom:10px;">👑 총괄 조회 전용</div>
+      <div class="form-group" style="margin-bottom:10px;">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+          <input type="checkbox" id="edit-confirmed" style="width:16px;height:16px;accent-color:var(--success);">
+          <span style="font-weight:600;">업무 확인 완료 표시</span>
+        </label>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">팀원 화면에 ✅ 확인됨 배지가 표시됩니다.</div>
+      </div>
+      <div class="form-group" style="margin-bottom:0;">
+        <label>총괄 코멘트</label>
+        <textarea id="edit-admin-comment" rows="2" placeholder="총괄 피드백, 지시사항 등을 입력하세요. 팀원이 다음 접속 시 확인할 수 있습니다."></textarea>
+      </div>
+    </div>
+    <div id="edit-history-area"></div>
+    <div style="display:flex;gap:10px;justify-content:space-between;margin-top:20px;flex-wrap:wrap;">
+      <span style="display:inline-flex;align-items:center;gap:4px;">
+        <button class="btn btn-ghost btn-sm" id="edit-ai-btn" onclick="aiExpandText($('edit-task-id').value)" title="진행내용을 보고서용 문장으로 자동 확장">✨ AI 문장 다듬기</button>
+        <span style="font-size:10px;background:#FAF5FF;color:#553C9A;border:1px solid #D6BCFA;border-radius:3px;padding:1px 5px;font-weight:700;cursor:help;" onclick="aiInfo()">실험적 ⓘ</span>
+      </span>
+      <div style="display:flex;gap:10px;">
+        <button class="btn btn-ghost" onclick="closeModal('edit-modal')">취소</button>
+        <button class="btn btn-primary" onclick="saveEdit()">💾 저장</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Help / Limitations Modal -->
+<div id="help-modal" class="modal-overlay hidden">
+  <div class="modal">
+    <h2>ℹ️ 도움말 · 알아두기</h2>
+    <p class="subtitle">원활한 사용을 위해 아래 동작 방식과 한계를 확인하세요.</p>
+    <h3 style="font-size:14px;color:var(--primary);margin:12px 0 8px;">✅ 권장 환경</h3>
+    <ul class="limit-list">
+      <li>· <strong>Chrome 또는 Edge</strong> 브라우저 + <strong>https 주소</strong>(사내 웹서버·GitHub Pages 등)에서 사용하세요.</li>
+      <li>· 파일을 더블클릭(file://)으로 열면 <strong>공유폴더 기능이 작동하지 않습니다.</strong></li>
+    </ul>
+    <h3 style="font-size:14px;color:var(--primary);margin:14px 0 8px;">⚠️ 데이터 동작 한계</h3>
+    <ul class="limit-list">
+      <li>· 데이터는 각자 <strong>브라우저에 저장</strong>됩니다. 캐시를 지우면 사라질 수 있으니 <strong>주기적으로 백업</strong>하세요. (자동 백업이 보조합니다)</li>
+      <li>· 팀원 데이터는 <strong>[전송]→[동기화]</strong>로 모입니다. 전송 전까지는 각자 PC에만 존재합니다.</li>
+      <li>· <strong>동시 편집·실시간 통합</strong>이 꼭 필요하면 설정에서 <strong>Firebase 모드</strong>를 사용하세요.</li>
+    </ul>
+    <h3 style="font-size:14px;color:var(--primary);margin:14px 0 8px;">🧪 실험적 기능</h3>
+    <ul class="limit-list">
+      <li>· <strong>AI 문장 다듬기</strong>는 외부 API로 내용이 전송되며 보안정책에 따라 차단될 수 있습니다.</li>
+      <li>· <strong>읽기전용 링크</strong>는 업무가 많으면 길이가 길어져, 자동으로 파일 공유 방식으로 전환됩니다.</li>
+    </ul>
+    <div style="display:flex;justify-content:flex-end;margin-top:18px;">
+      <button class="btn btn-primary" onclick="closeModal('help-modal')">확인</button>
+    </div>
+  </div>
+</div>
+
+<!-- Template Modal -->
+<div id="template-modal" class="modal-overlay hidden">
+  <div class="modal">
+    <h2>📋 업무 템플릿</h2>
+    <p class="subtitle">자주 쓰는 업무를 템플릿으로 저장하고 빠르게 불러오세요.</p>
+    <div id="template-list" class="template-list"></div>
+    <div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end;">
+      <button class="btn btn-ghost" onclick="closeModal('template-modal')">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- Main App -->
+<div id="app" class="hidden">
+  <div id="header">
+    <h1 id="app-title">📊 업무ON</h1>
+    <div id="tab-row" style="display:contents;"></div>
+    <div class="spacer"></div>
+    <div id="sync-badge-wrap" style="display:flex;align-items:center;gap:8px;">
+      <div id="sync-badge" class="sync-badge disconnected">
+        <span class="dot"></span>
+        <span id="sync-label">미연결</span>
+      </div>
+      <button class="folder-select-btn hidden" id="folder-select-header-btn" onclick="selectSharedFolder()" title="공유폴더 선택 또는 변경">
+        📁 <span id="folder-btn-text">폴더선택</span>
+      </button>
+    </div>
+    <span id="user-info"></span>
+    <button class="header-btn send-btn hidden" id="send-btn" onclick="sendToSharedFolder()" title="내 업무를 공유폴더에 전송">📤 전송</button>
+    <button class="header-btn hidden" id="sync-btn" onclick="syncFromSharedFolder(false)" title="공유폴더에서 동기화">🔄 동기화</button>
+    <button class="header-btn" onclick="openShareModal()">🔗 설정공유</button>
+    <button class="header-btn" onclick="$('help-modal').classList.remove('hidden')" title="도움말 · 한계 안내">ℹ️ 도움말</button>
+    <button class="header-btn" onclick="resetApp()">🚪 로그아웃</button>
+  </div>
+  <div id="tabs"></div>
+  <div id="content"></div>
+</div>
+
+<script>
+// ===================== STATE =====================
+let cfg = { storage:'folder', leader:'', members:[], leaderPass:'', firebase:{} };
+let session = { role:'', name:'' };
+let tasks = [];
+let db = null;
+let _fbRefs = null;
+let currentTab = 0;
+let sharedFolderHandle = null;
+let syncInterval = null;
+let lastSyncTime = {};
+
+const CATEGORIES = ['회계','공시','청구','예산','자금','내부통제','재무','기획','AI·디지털','IT·정보보안','채용','인사·평가','급여·근태','법무','경영지원','기타'];
+
+const CAT_CSS = {
+  '회계':'cat-회계','재무':'cat-재무','공시':'cat-공시',
+  '기획':'cat-기획','예산':'cat-예산','청구':'cat-청구',
+  '자금':'cat-자금','내부통제':'cat-내부통제',
+  'AI·디지털':'cat-AI','IT·정보보안':'cat-IT',
+  '채용':'cat-채용','인사·평가':'cat-인사','급여·근태':'cat-급여',
+  '법무':'cat-법무','경영지원':'cat-경영지원','기타':'cat-기타'
+};
+
+// ===================== UTILS =====================
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2);
+const today = () => new Date().toISOString().slice(0,10);
+const fmt = d => d ? d.replace(/-/g,'.') : '-';
+const $ = id => document.getElementById(id);
+
+function escHtml(str) {
+  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function isOverdue(t) {
+  if (!t.due || t.status === '처리완료') return false;
+  return t.due < today();
+}
+function isDueSoon(t) {
+  if (!t.due || t.status === '처리완료') return false;
+  const diff = (new Date(t.due) - new Date(today())) / 86400000;
+  return diff >= 0 && diff <= 7;
+}
+function getCurrentMonth() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+function getNextMonth(base) {
+  const [y,m] = (base || getCurrentMonth()).split('-').map(Number);
+  const nd = new Date(y, m, 1);
+  return `${nd.getFullYear()}-${String(nd.getMonth()+1).padStart(2,'0')}`;
+}
+function catOptions(selected) {
+  return CATEGORIES.map(c => `<option value="${c}"${c===selected?' selected':''}>${c}</option>`).join('');
+}
+function catBadge(cat) {
+  const cls = CAT_CSS[cat] || 'cat-기타';
+  return `<span class="badge ${cls}">${escHtml(cat||'기타')}</span>`;
+}
+function typeBadge(t) { return `<span class="badge badge-${t||'일상'}">${t||'일상'}</span>`; }
+function prioBadge(p) { return `<span class="badge badge-${p||'D'}">P${p||'D'}</span>`; }
+function statusBadge(s) { return `<span class="badge badge-${s||'진행중'}">${s||'진행중'}</span>`; }
+function progBar(v) {
+  v = Math.min(100, Math.max(0, parseInt(v)||0));
+  const cls = v >= 100 ? 'done' : v < 30 ? 'low' : '';
+  return `<div class="prog-wrap"><div class="prog-fill ${cls}" style="width:${v}%"></div></div><div style="font-size:11px;text-align:center;margin-top:2px;color:var(--text-muted);">${v}%</div>`;
+}
+
+// ===================== TOAST =====================
+function showToast(msg, type='info') {
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+  toast.textContent = msg;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.classList.add('show'), 10);
+  setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 3500);
+}
+
+// ===================== SETUP STORAGE CARDS =====================
+window.selectStorage = function(val) {
+  $('storage-value').value = val;
+  document.querySelectorAll('.storage-card').forEach(c => {
+    c.classList.toggle('selected', c.dataset.val === val);
+  });
+  $('firebase-fields').classList.toggle('hidden', val !== 'firebase');
+  $('folder-mode-note').classList.toggle('hidden', val !== 'folder');
+};
+
+// ===================== CONFIG / HASH =====================
+window.loadConfigFromHash = function() {
+  const m = location.hash.match(/cfg=([^&]+)/);
+  if (!m) return false;
+  try {
+    const decoded = JSON.parse(decodeURIComponent(escape(atob(decodeURIComponent(m[1])))));
+    cfg = decoded;
+    localStorage.setItem('wrs_cfg', JSON.stringify(cfg));
+    history.replaceState(null, '', location.pathname);
+    return true;
+  } catch(e) { console.warn('Hash cfg parse error:', e); return false; }
+};
+
+window.genShareLink = function() {
+  if (!cfg) return '';
+  const base = location.href.split('#')[0];
+  const encoded = encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(cfg)))));
+  return base + '#cfg=' + encoded;
+};
+
+window.copyShareLink = function() {
+  const url = genShareLink();
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(url).then(() => showToast('링크가 복사되었습니다!', 'success')).catch(() => fallbackCopy(url));
+  } else { fallbackCopy(url); }
+};
+function fallbackCopy(text) {
+  const el = $('share-url-input');
+  if (el) { el.select(); document.execCommand('copy'); showToast('링크가 복사되었습니다!', 'success'); }
+}
+
+window.openShareModal = function() {
+  if (!cfg) { showToast('설정이 없습니다.', 'error'); return; }
+  $('share-url-input').value = genShareLink();
+  const isFolder = cfg.storage === 'folder';
+  $('share-folder-note').classList.toggle('hidden', !isFolder);
+  $('save-team-config-btn').classList.toggle('hidden', !isFolder);
+  $('share-modal').classList.remove('hidden');
+};
+
+window.exportConfig = function() {
+  const blob = new Blob([JSON.stringify(cfg, null, 2)], {type:'application/json'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'wrs_config.json'; a.click();
+};
+
+window.importConfigFile = function(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        cfg = JSON.parse(e.target.result);
+        localStorage.setItem('wrs_cfg', JSON.stringify(cfg));
+        resolve(cfg);
+      } catch(err) { reject(err); }
+    };
+    reader.readAsText(file);
+  });
+};
+
+window.importSetupFile = async function() {
+  const inp = $('import-setup-file');
+  if (!inp.files[0]) { alert('파일을 선택하세요.'); return; }
+  try { await importConfigFile(inp.files[0]); populateSetupForm(); alert('설정 파일을 불러왔습니다.'); }
+  catch(e) { alert('파일 형식 오류: ' + e.message); }
+};
+
+window.importLoginFile = async function() {
+  const inp = $('import-login-file');
+  if (!inp.files[0]) { alert('파일을 선택하세요.'); return; }
+  try { await importConfigFile(inp.files[0]); showLogin(); alert('설정 파일을 불러왔습니다.'); }
+  catch(e) { alert('파일 형식 오류: ' + e.message); }
+};
+
+function populateSetupForm() {
+  $('setup-leader').value = cfg.leader || '';
+  $('setup-members').value = (cfg.members||[]).join(', ');
+  $('setup-pass').value = cfg.leaderPass || '';
+  const st = cfg.storage || 'folder';
+  selectStorage(st);
+  if (cfg.firebase) {
+    if (cfg.firebase.apiKey) $('fb-apikey').value = cfg.firebase.apiKey;
+    if (cfg.firebase.projectId) $('fb-projectid').value = cfg.firebase.projectId;
+    if (cfg.firebase.appId) $('fb-appid').value = cfg.firebase.appId;
+  }
+}
+
+// ===================== SETUP =====================
+window.showSetup = function() {
+  $('setup-modal').classList.remove('hidden');
+  $('login-modal').classList.add('hidden');
+  $('app').classList.add('hidden');
+  selectStorage(cfg.storage || 'folder');
+};
+
+window.openSetupFromLogin = function() {
+  $('login-modal').classList.add('hidden');
+  showSetup();
+};
+
+window.completeSetup = function() {
+  const storage = $('storage-value').value || 'folder';
+  const leader = $('setup-leader').value.trim();
+  const membersRaw = $('setup-members').value.trim();
+  const leaderPass = $('setup-pass').value;
+  if (!leader) { alert('총괄 조회 이름을 입력하세요.'); return; }
+  if (!membersRaw) { alert('팀원 이름을 입력하세요.'); return; }
+  const members = membersRaw.split(',').map(m => m.trim()).filter(Boolean);
+  const orgName = ($('setup-orgname')||{}).value?.trim() || '';
+  cfg = { storage, orgName, leader, members, leaderPass, firebase:{} };
+  if (storage === 'firebase') {
+    cfg.firebase = {
+      apiKey: $('fb-apikey').value.trim(),
+      projectId: $('fb-projectid').value.trim(),
+      appId: $('fb-appid').value.trim()
+    };
+  }
+  localStorage.setItem('wrs_cfg', JSON.stringify(cfg));
+  $('setup-modal').classList.add('hidden');
+  openShareModal();
+  showLogin();
+};
+
+// ===================== LOGIN =====================
+window.showLogin = function() {
+  $('setup-modal').classList.add('hidden');
+  $('login-modal').classList.remove('hidden');
+  $('app').classList.add('hidden');
+  $('login-subtitle').textContent = `총괄: ${cfg.leader} | 팀원: ${(cfg.members||[]).join(', ')}`;
+  const chips = $('member-chips');
+  chips.innerHTML = '';
+  (cfg.members||[]).forEach(m => {
+    const chip = document.createElement('div');
+    chip.className = 'chip'; chip.textContent = m;
+    chip.onclick = () => {
+      document.querySelectorAll('#member-chips .chip').forEach(c => c.classList.remove('selected'));
+      chip.classList.add('selected');
+    };
+    chips.appendChild(chip);
+  });
+};
+
+window.onRoleChange = function() {
+  const role = document.querySelector('input[name=role]:checked')?.value;
+  $('member-select-area').classList.toggle('hidden', role === 'leader');
+  $('leader-pass-area').classList.toggle('hidden', role === 'member');
+};
+
+window.doLogin = function() {
+  const role = document.querySelector('input[name=role]:checked')?.value || 'member';
+  if (role === 'leader') {
+    if (cfg.leaderPass && $('login-pass').value !== cfg.leaderPass) {
+      alert('비밀번호가 틀렸습니다.'); return;
+    }
+    session = { role:'leader', name: cfg.leader };
+  } else {
+    const sel = document.querySelector('#member-chips .chip.selected');
+    if (!sel) { alert('팀원을 선택하세요.'); return; }
+    session = { role:'member', name: sel.textContent };
+  }
+  sessionStorage.setItem('wrs_session', JSON.stringify(session));
+  $('login-modal').classList.add('hidden');
+  afterLogin();
+};
+
+// ===================== FIREBASE =====================
+window.initFirebase = async function() {
+  if (cfg.storage !== 'firebase') return false;
+  try {
+    const { initializeApp, getApps } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
+    const { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc, query, orderBy } =
+      await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const fbCfg = {
+      apiKey: cfg.firebase.apiKey,
+      projectId: cfg.firebase.projectId,
+      appId: cfg.firebase.appId,
+      authDomain: `${cfg.firebase.projectId}.firebaseapp.com`,
+      storageBucket: `${cfg.firebase.projectId}.appspot.com`,
+      messagingSenderId: '000000000000'
+    };
+    const existingApps = getApps();
+    const app = existingApps.find(a => a.name === 'wrs-app') || initializeApp(fbCfg, 'wrs-app');
+    db = getFirestore(app);
+    const colRef = collection(db, 'tasks');
+    const q = query(colRef, orderBy('createdAt','asc'));
+    onSnapshot(q, snap => {
+      tasks = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+      renderCurrentTab();
+    });
+    _fbRefs = { db, collection, doc, setDoc, deleteDoc, colRef };
+    return true;
+  } catch(e) { console.error('Firebase error:', e); return false; }
+};
+
+// ===================== INDEXEDDB FOR FOLDER HANDLE =====================
+function saveDirectoryHandle(handle) {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('wrs-db', 1);
+    req.onupgradeneeded = e => e.target.result.createObjectStore('handles');
+    req.onsuccess = e => {
+      try {
+        const tx = e.target.result.transaction('handles', 'readwrite');
+        tx.objectStore('handles').put(handle, 'sharedFolder');
+        tx.oncomplete = resolve;
+        tx.onerror = reject;
+      } catch(err) { reject(err); }
+    };
+    req.onerror = reject;
+  });
+}
+
+function loadDirectoryHandle() {
+  return new Promise((resolve) => {
+    const req = indexedDB.open('wrs-db', 1);
+    req.onupgradeneeded = e => e.target.result.createObjectStore('handles');
+    req.onsuccess = e => {
+      try {
+        const tx = e.target.result.transaction('handles', 'readonly');
+        const r = tx.objectStore('handles').get('sharedFolder');
+        r.onsuccess = () => resolve(r.result || null);
+        r.onerror = () => resolve(null);
+      } catch(err) { resolve(null); }
+    };
+    req.onerror = () => resolve(null);
+  });
+}
+
+// ===================== SYNC STATUS UI =====================
+function setSyncStatus(state, folderName) {
+  const badge = $('sync-badge');
+  const label = $('sync-label');
+  if (!badge) return;
+  if (state === 'connected') {
+    badge.className = 'sync-badge connected';
+    label.textContent = `공유폴더 연결${folderName ? ': '+folderName : ''}`;
+  } else if (state === 'sent') {
+    badge.className = 'sync-badge connected';
+    label.textContent = `전송됨`;
+    setTimeout(() => setSyncStatus('connected', sharedFolderHandle?.name), 2000);
+  } else {
+    badge.className = 'sync-badge disconnected';
+    label.textContent = '미연결';
+  }
+}
+
+function updateFolderButtons() {
+  const isFolder = cfg.storage === 'folder';
+  const hasHandle = !!sharedFolderHandle;
+  const sendBtn = $('send-btn');
+  const syncBtn = $('sync-btn');
+  const folderBtn = $('folder-select-header-btn');
+
+  if (folderBtn) {
+    folderBtn.classList.toggle('hidden', !isFolder);
+    const btnText = $('folder-btn-text');
+    if (btnText) {
+      btnText.textContent = hasHandle ? '폴더변경' : '폴더선택';
+    }
+  }
+
+  if (sendBtn) sendBtn.classList.toggle('hidden', !isFolder || !hasHandle);
+  if (syncBtn) syncBtn.classList.toggle('hidden', !isFolder || !hasHandle);
+}
+
+// ===================== SHARED FOLDER =====================
+window.selectSharedFolder = async function() {
+  console.log('[선택] 폴더 선택 시작...');
+
+  if (!window.showDirectoryPicker) {
+    console.error('[선택] showDirectoryPicker 미지원');
+    showToast('이 브라우저는 File System API를 지원하지 않습니다.', 'error');
+    return;
+  }
+
+  try {
+    console.log('[선택] 폴더 선택 대화 열기...');
+    const handle = await window.showDirectoryPicker({ mode: 'readwrite' });
+    console.log('[선택] 폴더 선택됨:', handle.name);
+
+    // 권한 확인
+    let perm = await handle.queryPermission({ mode: 'readwrite' });
+    console.log('[선택] 권한 확인:', perm);
+
+    if (perm !== 'granted') {
+      console.log('[선택] 권한 요청...');
+      perm = await handle.requestPermission({ mode: 'readwrite' });
+      console.log('[선택] 권한 요청 결과:', perm);
+
+      if (perm !== 'granted') {
+        console.error('[선택] 권한 거부');
+        showToast('폴더 접근 권한이 거부되었습니다.', 'error');
+        return;
+      }
+    }
+
+    sharedFolderHandle = handle;
+    console.log('[선택] 폴더 핸들 저장...');
+
+    // IndexedDB에 저장
+    try {
+      await saveDirectoryHandle(handle);
+      console.log('[선택] IndexedDB에 폴더 핸들 저장 완료');
+    } catch(ie) {
+      console.warn('[선택] IndexedDB 저장 실패 (세션 중만 유지됨):', ie);
+    }
+
+    // UI 업데이트
+    setSyncStatus('connected', handle.name);
+    updateFolderButtons();
+    startAutoSync();
+    renderCurrentTab();
+
+    showToast(`공유폴더 연결됨: ${handle.name}`, 'success');
+    console.log('[선택] 완료:', handle.name);
+
+  } catch(e) {
+    if (e.name === 'AbortError') {
+      console.log('[선택] 사용자가 폴더 선택 취소');
+    } else {
+      console.error('[선택] 폴더 선택 오류:', e.name, e.message);
+      showToast(`폴더 선택 실패: ${e.message}`, 'error');
+    }
+  }
+};
+
+window.sendToSharedFolder = async function() {
+  console.log('[전송] 시작...');
+
+  if (!sharedFolderHandle) {
+    console.error('[전송] 공유폴더 핸들 없음');
+    showToast('공유폴더를 먼저 선택하세요.', 'error');
+    return;
+  }
+
+  try {
+    // 권한 확인
+    let perm = await sharedFolderHandle.queryPermission({ mode: 'readwrite' });
+    console.log('[전송] 권한:', perm);
+
+    if (perm !== 'granted') {
+      console.log('[전송] 권한 요청...');
+      perm = await sharedFolderHandle.requestPermission({ mode: 'readwrite' });
+      console.log('[전송] 권한 요청 결과:', perm);
+
+      if (perm !== 'granted') {
+        console.error('[전송] 권한 거부');
+        showToast('폴더 접근 권한이 거부되었습니다.', 'error');
+        return;
+      }
+    }
+
+    const myTasks = tasks.filter(t => t.member === session.name);
+    const data = {
+      member: session.name,
+      syncedAt: new Date().toISOString(),
+      tasks: myTasks
+    };
+
+    const fileName = `${session.name}_업무.json`;
+    console.log('[전송] 파일명:', fileName);
+    console.log('[전송] 업무 수:', myTasks.length);
+
+    // 파일 핸들 획득
+    const fileHandle = await sharedFolderHandle.getFileHandle(fileName, { create: true });
+    console.log('[전송] 파일 핸들 획득 완료');
+
+    // 파일 쓰기
+    const writable = await fileHandle.createWritable({ keepExistingData: false });
+    console.log('[전송] 쓰기 스트림 열기 완료');
+
+    const jsonStr = JSON.stringify(data, null, 2);
+    await writable.write(jsonStr);
+    await writable.close();
+
+    console.log('[전송] 파일 저장 완료:', fileName);
+    showToast(`전송 완료! (${myTasks.length}건)`, 'success');
+    setSyncStatus('sent');
+
+  } catch(e) {
+    console.error('[전송] 오류:', e.name, e.message, e);
+    showToast(`전송 실패: ${e.message}`, 'error');
+  }
+};
+
+window.syncFromSharedFolder = async function(silent) {
+  console.log('[동기화] 시작...');
+
+  if (!sharedFolderHandle) {
+    console.warn('[동기화] 공유폴더 핸들 없음');
+    return;
+  }
+
+  try {
+    // 권한 확인
+    let perm = await sharedFolderHandle.queryPermission({ mode: 'readwrite' });
+    console.log('[동기화] 권한:', perm);
+
+    if (perm !== 'granted') {
+      console.log('[동기화] 권한 요청...');
+      perm = await sharedFolderHandle.requestPermission({ mode: 'readwrite' });
+      console.log('[동기화] 권한 요청 결과:', perm);
+
+      if (perm !== 'granted') {
+        console.warn('[동기화] 권한 거부');
+        setSyncStatus('disconnected');
+        return;
+      }
+    }
+
+    let mergedOtherTasks = [];
+    let updatedMembers = [];
+    let processedCount = 0;
+
+    // for await...of 호환성 확인 및 실행
+    try {
+      if (sharedFolderHandle.entries && typeof sharedFolderHandle.entries === 'function') {
+        console.log('[동기화] entries() 메서드 사용');
+
+        for await (const [name, handle] of sharedFolderHandle.entries()) {
+          if (handle.kind !== 'file') continue;
+          if (!name.endsWith('_업무.json')) continue;
+
+          processedCount++;
+          const memberName = name.replace('_업무.json', '');
+          console.log(`[동기화] 파일 발견: ${name}`);
+
+          if (session.role !== 'leader' && memberName === session.name) {
+            console.log(`[동기화] 자신의 파일 스킵: ${memberName}`);
+            continue;
+          }
+
+          try {
+            const file = await handle.getFile();
+            const text = await file.text();
+            const data = JSON.parse(text);
+
+            mergedOtherTasks.push(...data.tasks);
+            updatedMembers.push(`${memberName}(${data.tasks.length}건)`);
+
+            console.log(`[동기화] 읽음: ${memberName} - ${data.tasks.length}건`);
+          } catch(fe) {
+            console.warn(`[동기화] 파일 읽기 실패: ${name}`, fe);
+          }
+        }
+      } else {
+        // 폴더 멤버 목록으로 대체
+        console.log('[동기화] entries() 미지원, 멤버 목록 사용');
+
+        for (const memberName of (cfg.members || [])) {
+          if (session.role !== 'leader' && memberName === session.name) continue;
+
+          try {
+            const fileName = `${memberName}_업무.json`;
+            const fileHandle = await sharedFolderHandle.getFileHandle(fileName);
+            const file = await fileHandle.getFile();
+            const text = await file.text();
+            const data = JSON.parse(text);
+
+            mergedOtherTasks.push(...data.tasks);
+            updatedMembers.push(`${memberName}(${data.tasks.length}건)`);
+
+            console.log(`[동기화] 읽음: ${memberName} - ${data.tasks.length}건`);
+            processedCount++;
+          } catch(fe) {
+            console.log(`[동기화] 파일 없음: ${memberName}_업무.json`);
+          }
+        }
+      }
+    } catch(loopError) {
+      console.error('[동기화] 폴더 순회 오류:', loopError);
+    }
+
+    // 데이터 병합
+    const myTasks = tasks.filter(t => t.member === session.name);
+    tasks = [...myTasks, ...mergedOtherTasks];
+    saveLocal();
+
+    console.log(`[동기화] 완료: ${processedCount}개 파일, 총 ${tasks.length}건 업무`);
+
+    if (updatedMembers.length > 0 && !silent) {
+      showToast(`동기화 완료: ${updatedMembers.join(', ')}`, 'success');
+    } else if (updatedMembers.length === 0 && !silent) {
+      showToast('최신 상태입니다.', 'info');
+    }
+
+    setSyncStatus('connected', sharedFolderHandle.name);
+    renderCurrentTab();
+
+  } catch(e) {
+    console.error('[동기화] 오류:', e.name, e.message, e);
+    showToast(`동기화 실패: ${e.message}`, 'error');
+    setSyncStatus('disconnected');
+  }
+};
+
+function startAutoSync() {
+  console.log('[자동동기화] 시작 (30초 간격)');
+  if (syncInterval) clearInterval(syncInterval);
+  syncInterval = setInterval(() => syncFromSharedFolder(true), 30000);
+}
+
+window.saveTeamConfigToFolder = async function() {
+  if (!sharedFolderHandle) { showToast('공유폴더가 연결되지 않았습니다.', 'error'); return; }
+  try {
+    const fileHandle = await sharedFolderHandle.getFileHandle('team_config.json', { create: true });
+    const writable = await fileHandle.createWritable();
+    await writable.write(JSON.stringify(cfg, null, 2));
+    await writable.close();
+    showToast('team_config.json 저장 완료', 'success');
+  } catch(e) { showToast('저장 실패: ' + e.message, 'error'); }
+};
+
+// ===================== AFTER LOGIN =====================
+window.afterLogin = async function() {
+  console.log('[로그인] afterLogin 시작');
+  $('app').classList.remove('hidden');
+  $('user-info').textContent = `👤 ${session.name} (${session.role==='leader'?'총괄 조회':'팀원'})`;
+  updateFolderButtons();
+
+  if (cfg.storage === 'firebase') {
+    console.log('[로그인] Firebase 초기화');
+    const ok = await initFirebase();
+    if (!ok) loadLocal();
+  } else {
+    console.log('[로그인] 로컬 스토리지 로드');
+    loadLocal();
+  }
+
+  // Try to restore folder handle from IndexedDB
+  if (cfg.storage === 'folder') {
+    console.log('[로그인] 폴더 핸들 복원 시도');
+    const savedHandle = await loadDirectoryHandle();
+    if (savedHandle) {
+      // 권한 확인
+      try {
+        const perm = await savedHandle.queryPermission({ mode: 'readwrite' });
+        if (perm === 'granted') {
+          sharedFolderHandle = savedHandle;
+          console.log('[로그인] 폴더 핸들 복원 완료:', savedHandle.name);
+          setSyncStatus('connected', savedHandle.name);
+          updateFolderButtons();
+          startAutoSync();
+        } else {
+          console.log('[로그인] 폴더 권한 없음 (다시 선택 필요)');
+          updateFolderButtons();
+        }
+      } catch(pe) {
+        console.log('[로그인] 폴더 권한 확인 오류:', pe);
+        updateFolderButtons();
+      }
+    } else {
+      console.log('[로그인] 저장된 폴더 없음');
+      updateFolderButtons();
+    }
+  }
+
+  buildTabs();
+  showTab(0);
+};
+
+function loadLocal() {
+  const raw = localStorage.getItem('wrs_tasks');
+  tasks = raw ? (JSON.parse(raw) || []) : [];
+  renderCurrentTab();
+}
+
+window.saveLocal = function() {
+  localStorage.setItem('wrs_tasks', JSON.stringify(tasks));
+};
+
+// ===================== INIT =====================
+window.init = function() {
+  loadConfigFromHash();
+  const saved = localStorage.getItem('wrs_cfg');
+  if (saved) { try { cfg = JSON.parse(saved); } catch(e){} }
+  const sess = sessionStorage.getItem('wrs_session');
+  if (sess) {
+    try {
+      session = JSON.parse(sess);
+      if (session.role && session.name) { afterLogin(); return; }
+    } catch(e){}
+  }
+  if (cfg.leader && cfg.members && cfg.members.length > 0) showLogin();
+  else showSetup();
+};
+
+// ===================== TABS =====================
+window.buildTabs = function() {
+  const tabsEl = $('tabs');
+  tabsEl.innerHTML = '';
+  const defs = session.role === 'leader'
+    ? ['🏠 대시보드','📋 전체현황','📊 우선순위별','📅 월별현황','📝 주간보고','📑 월간보고']
+    : ['📋 내 업무','📊 우선순위별','📅 월별현황','📝 주간보고','📑 월간보고'];
+  defs.forEach((label, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'tab-btn' + (i===0?' active':'');
+    btn.textContent = label;
+    btn.onclick = () => showTab(i);
+    tabsEl.appendChild(btn);
+  });
+};
+
+window.showTab = function(idx) {
+  currentTab = idx;
+  document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', i===idx));
+  renderCurrentTab();
+};
+
+window.renderCurrentTab = function() {
+  const cont = $('content');
+  if (!cont || !session.role) return;
+  if (session.role === 'leader') {
+    [renderDashboard, renderAll, renderPriority, renderMonthly, initWeekly, initMonthlyReport][currentTab]?.(cont);
+  } else {
+    [renderMy, renderMyPriority, renderMyMonthly, initWeekly, initMonthlyReport][currentTab]?.(cont);
+  }
+};
+
+// Alias for old usages
+window.refresh = window.renderCurrentTab;
+
+// ===================== CRUD =====================
+// addTask 최종 정의는 PHASE 3 ADDITIONS, del 최종 정의는 PHASE 1 ADDITIONS 참조 [Phase6 정리]
+// upd(아래)는 base 정의 — PHASE 4에서 변경이력 기록 래퍼로 확장됨
+window.upd = async function(id, fields) {
+  const idx = tasks.findIndex(t=>t.id===id);
+  if (idx<0) return;
+  const updated = {...tasks[idx], ...fields};
+  if (cfg.storage==='firebase' && _fbRefs) {
+    try { await _fbRefs.setDoc(_fbRefs.doc(_fbRefs.colRef, id), updated); }
+    catch(e) { tasks[idx]=updated; saveLocal(); renderCurrentTab(); }
+  } else { tasks[idx]=updated; saveLocal(); renderCurrentTab(); }
+};
+
+window.openEdit = function(id) {
+  const t = tasks.find(x=>x.id===id);
+  if (!t) return;
+  $('edit-task-id').value = id;
+  $('edit-name').value = t.name||'';
+  $('edit-category').innerHTML = catOptions(t.category);
+  $('edit-desc').value = t.desc||'';
+  $('edit-type').value = t.taskType||'일상';
+  $('edit-progress').value = t.progress||0;
+  $('edit-priority').value = t.priority||'D';
+  $('edit-due').value = t.due||'';
+  $('edit-status').value = t.status||'진행중';
+  $('edit-note').value = t.note||'';
+  $('edit-modal').classList.remove('hidden');
+};
+
+window.saveEdit = async function() {
+  const id = $('edit-task-id').value;
+  await upd(id, {
+    name: $('edit-name').value.trim(),
+    category: $('edit-category').value,
+    desc: $('edit-desc').value.trim(),
+    taskType: $('edit-type').value,
+    progress: parseInt($('edit-progress').value)||0,
+    priority: $('edit-priority').value,
+    due: $('edit-due').value,
+    status: $('edit-status').value,
+    note: $('edit-note').value.trim()
+  });
+  closeModal('edit-modal');
+  showToast('수정되었습니다.', 'success');
+};
+
+window.closeModal = function(id) { $(id).classList.add('hidden'); };
+
+// ===================== FOLDER ALERT BANNER =====================
+function folderAlertBanner() {
+  if (cfg.storage !== 'folder' || sharedFolderHandle) return '';
+  return `<div class="folder-alert">
+    <span>📁</span>
+    <span><strong>공유폴더가 연결되지 않았습니다.</strong> 헤더의 [📁 폴더선택] 버튼을 클릭하세요.</span>
+    <button class="btn btn-accent btn-sm" onclick="selectSharedFolder()">📁 폴더 선택</button>
+  </div>`;
+}
+
+// ===================== ADD FORM =====================
+function addFormHTML() {
+  return `<div class="add-form" id="add-form">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <h3>+ 업무 등록</h3>
+      <div style="display:flex;gap:6px;">
+        <button class="btn btn-outline btn-sm" onclick="openTemplateModal()">📋 템플릿</button>
+        <button class="btn btn-ghost btn-sm" onclick="toggleAddForm()">접기 ▲</button>
+      </div>
+    </div>
+    <div id="ctx-warning-area"></div>
+    <div id="add-form-body">
+      <div class="form-row" style="margin-bottom:12px;">
+        <div class="form-group" style="margin-bottom:0;">
+          <label>업무명 *</label>
+          <input type="text" id="new-name" placeholder="업무명 입력" onkeydown="if(event.key==='Enter')addTask()" oninput="checkContextWarnings()">
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label>분야</label>
+          <select id="new-category">${catOptions('회계')}</select>
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label>업무구분</label>
+          <select id="new-type" onchange="checkContextWarnings()">
+            <option value="중점">중점</option>
+            <option value="일상" selected>일상</option>
+            <option value="익월">익월</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row" style="margin-bottom:12px;">
+        <div class="form-group" style="margin-bottom:0;">
+          <label>완료예정일</label>
+          <input type="date" id="new-due">
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label>상태</label>
+          <select id="new-status" onchange="onNewStatusChange(this.value)">
+            <option value="진행중" selected>진행중</option>
+            <option value="처리완료">처리완료</option>
+            <option value="보류">보류</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin:4px 0 12px;">
+        <span class="adv-toggle" id="add-detail-toggle" onclick="toggleAddDetail()">⚙️ 상세 입력 펼치기 ▼</span>
+      </div>
+      <div id="add-detail-fields" class="hidden">
+        <div class="form-group">
+          <label>
+            우선순위
+            <span class="tooltip-wrap"><span class="tip">?</span><span class="tt">긴급도+중요도로 자동 결정<br>필요 시 우측에서 직접 지정 가능</span></span>
+          </label>
+          <div class="urg-imp-grid">
+            <div>
+              <label style="font-size:12px;color:var(--text-muted);">긴급도</label>
+              <select id="new-urgency" onchange="calcNewPriority();checkContextWarnings()">
+                <option value="low" selected>낮음 (이번 달)</option>
+                <option value="medium">보통 (이번 주)</option>
+                <option value="high">높음 (즉시 처리)</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:12px;color:var(--text-muted);">중요도</label>
+              <select id="new-importance" onchange="calcNewPriority();checkContextWarnings()">
+                <option value="low" selected>낮음 (보조 업무)</option>
+                <option value="medium">보통</option>
+                <option value="high">높음 (핵심 업무)</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap;">
+            <div id="new-priority-display" class="priority-auto-badge" style="background:#E2E8F0;color:#4A5568;">자동 계산: PD — 일반</div>
+            <label style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:4px;">
+              직접 지정:
+              <select id="new-priority-manual" onchange="overrideNewPriority(this.value)">
+                <option value="">자동</option>
+                <option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option>
+              </select>
+            </label>
+          </div>
+          <input type="hidden" id="new-priority" value="D">
+        </div>
+        <div class="form-group">
+          <label>진행내용</label>
+          <textarea id="new-desc" rows="2" placeholder="진행 내용 입력"></textarea>
+        </div>
+        <div class="form-group">
+          <label>진행률 (%)</label>
+          <div class="prog-btns" id="new-prog-btns">
+            <button type="button" class="prog-btn active" onclick="setNewProg(0)">0%</button>
+            <button type="button" class="prog-btn" onclick="setNewProg(25)">25%</button>
+            <button type="button" class="prog-btn" onclick="setNewProg(50)">50%</button>
+            <button type="button" class="prog-btn" onclick="setNewProg(75)">75%</button>
+            <button type="button" class="prog-btn" onclick="setNewProg(100)">100%</button>
+          </div>
+          <input type="hidden" id="new-progress" value="0">
+        </div>
+        <div class="form-group">
+          <label>비고/이슈</label>
+          <input type="text" id="new-note" placeholder="이슈 또는 참고사항">
+        </div>
+        <div class="form-group">
+          <label>이달의 코멘트 <span style="font-size:11px;color:var(--text-muted);">(월간보고서 반영)</span></label>
+          <textarea id="new-month-comment" rows="2" placeholder="이 업무의 특이사항, 성과, 어려움 등을 자유롭게 적어주세요."></textarea>
+        </div>
+        <div class="form-group">
+          <label>
+            반복 설정
+            <span class="tooltip-wrap"><span class="tip">?</span><span class="tt">반복으로 지정하면 매월/매주 로그인 시<br>자동으로 새 업무가 생성됩니다.</span></span>
+          </label>
+          <select id="new-recurrence">
+            <option value="none" selected>반복 없음</option>
+            <option value="weekly">매주 반복</option>
+            <option value="monthly">매월 반복</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+        <button class="btn btn-ghost btn-sm" onclick="saveAsTemplate()" title="현재 입력 내용을 템플릿으로 저장">💾 템플릿으로 저장</button>
+        <button class="btn btn-primary" onclick="addTask()">✅ 등록</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+window.toggleAddForm = function() {
+  const body = $('add-form-body');
+  if (!body) return;
+  const visible = body.style.display !== 'none';
+  body.style.display = visible ? 'none' : '';
+  const btn = document.querySelector('#add-form .btn-ghost');
+  if (btn) btn.textContent = visible ? '펼치기 ▼' : '접기 ▲';
+};
+
+// (구) renderMy/renderAll 원본 정의 제거됨 — PHASE 1 ADDITIONS 정의를 사용 [Phase5 정리]
+
+// ===================== PRIORITY MATRIX =====================
+function buildMatrix(taskList) {
+  const groups = {A:[],B:[],C:[],D:[]};
+  taskList.forEach(t => { if(groups[t.priority]) groups[t.priority].push(t); });
+  const colors = {A:'#C53030',B:'#C05621',C:'#276749',D:'#718096'};
+  const labels = {A:'A 긴급·중요',B:'B 중요',C:'C 긴급',D:'D 일반'};
+  return Object.keys(groups).map(p => {
+    const items = groups[p].map(t =>
+      `<div class="matrix-item" style="border-color:${colors[p]}">
+        <div class="mi-name">${session.role==='leader'?`<span style="color:var(--primary);font-weight:700;">[${escHtml(t.member)}]</span> `:''}${escHtml(t.name)}</div>
+        <div class="mi-meta">${catBadge(t.category)} ${typeBadge(t.taskType)} ${statusBadge(t.status)}${t.due?` 📅 ${fmt(t.due)}`:''}${t.progress?` ${t.progress}%`:''}</div>
+        ${t.desc?`<div style="color:var(--text-muted);font-size:12px;margin-top:4px;">${escHtml(t.desc)}</div>`:''}
+      </div>`
+    ).join('') || '<div style="color:var(--text-muted);font-size:13px;padding:8px;">해당 없음</div>';
+    return `<div class="matrix-cell">
+      <h3 style="color:${colors[p]}">${prioBadge(p)} ${labels[p]} <span style="font-weight:400;color:var(--text-muted);">(${groups[p].length}건)</span></h3>
+      ${items}
+    </div>`;
+  }).join('');
+}
+
+window.renderMyPriority = function(cont) {
+  const t = tasks.filter(t => t.member===session.name);
+  cont.innerHTML = `<div class="section-header-row"><h2>우선순위별 업무</h2></div><div class="matrix">${buildMatrix(t)}</div>`;
+};
+
+const prioFilters = { member:'all' };
+window.renderPriority = function(cont) {
+  if ($('prio-member-filter')) prioFilters.member = $('prio-member-filter').value;
+  let t = [...tasks];
+  if (prioFilters.member !== 'all') t = t.filter(x => x.member===prioFilters.member);
+  cont.innerHTML = `
+    <div class="section-header-row">
+      <h2>우선순위별 전체 현황</h2>
+      <select id="prio-member-filter" onchange="prioFilters.member=this.value;renderPriority($('content'))">
+        <option value="all"${prioFilters.member==='all'?' selected':''}>전체 팀원</option>
+        ${(cfg.members||[]).map(m=>`<option value="${m}"${prioFilters.member===m?' selected':''}>${escHtml(m)}</option>`).join('')}
+      </select>
+    </div>
+    <div class="matrix">${buildMatrix(t)}</div>`;
+};
+
+// ===================== MONTHLY TABLE =====================
+function buildMonthlyStats(taskList) {
+  const months = {};
+  taskList.forEach(t => {
+    const m = (t.date||'').slice(0,7);
+    if (!m) return;
+    if (!months[m]) months[m] = {total:0,done:0,inprog:0,hold:0};
+    months[m].total++;
+    if (t.status==='처리완료') months[m].done++;
+    else if (t.status==='진행중') months[m].inprog++;
+    else if (t.status==='보류') months[m].hold++;
+  });
+  return months;
+}
+
+window.renderMyMonthly = function(cont) {
+  const t = tasks.filter(x => x.member===session.name);
+  const data = buildMonthlyStats(t);
+  const months = Object.keys(data).sort();
+  const rows = months.map(m => {
+    const d = data[m];
+    const pct = d.total>0 ? Math.round(d.done/d.total*100) : 0;
+    return `<tr>
+      <td>${m}</td>
+      <td style="text-align:center;">${d.total}</td>
+      <td style="text-align:center;color:var(--success);">${d.done}</td>
+      <td style="text-align:center;color:var(--info);">${d.inprog}</td>
+      <td style="text-align:center;color:var(--warning);">${d.hold}</td>
+      <td style="min-width:100px;">${progBar(pct)}</td>
+    </tr>`;
+  }).join('');
+  cont.innerHTML = `
+    <div class="section-header-row"><h2>월별 업무 현황</h2></div>
+    <div class="card">
+      <div class="table-wrap">
+        <table class="monthly-table">
+          <thead><tr><th>연월</th><th>전체</th><th>완료</th><th>진행중</th><th>보류</th><th>완료율</th></tr></thead>
+          <tbody>${rows || '<tr><td colspan="6"><div class="empty-state"><div class="icon">📊</div><p>데이터가 없습니다.</p></div></td></tr>'}</tbody>
+        </table>
+      </div>
+    </div>`;
+};
+
+const monthFilters = { member:'all' };
+window.renderMonthly = function(cont) {
+  if ($('month-member-filter')) monthFilters.member = $('month-member-filter').value;
+  const allMonths = [...new Set(tasks.map(t=>(t.date||'').slice(0,7)).filter(Boolean))].sort();
+  let rows = '';
+  allMonths.forEach(month => {
+    (cfg.members||[]).forEach(m => {
+      if (monthFilters.member!=='all' && m!==monthFilters.member) return;
+      const mt = tasks.filter(t=>t.member===m && (t.date||'').startsWith(month));
+      if (!mt.length) return;
+      const done = mt.filter(t=>t.status==='처리완료').length;
+      const inprog = mt.filter(t=>t.status==='진행중').length;
+      const hold = mt.filter(t=>t.status==='보류').length;
+      const pct = Math.round(done/mt.length*100);
+      rows += `<tr>
+        <td>${month}</td>
+        <td><strong>${escHtml(m)}</strong></td>
+        <td style="text-align:center;">${mt.length}</td>
+        <td style="text-align:center;color:var(--success);">${done}</td>
+        <td style="text-align:center;color:var(--info);">${inprog}</td>
+        <td style="text-align:center;color:var(--warning);">${hold}</td>
+        <td style="min-width:100px;">${progBar(pct)}</td>
+      </tr>`;
+    });
+  });
+  cont.innerHTML = `
+    <div class="section-header-row">
+      <h2>월별 업무 현황</h2>
+      <select id="month-member-filter" onchange="monthFilters.member=this.value;renderMonthly($('content'))">
+        <option value="all"${monthFilters.member==='all'?' selected':''}>전체 팀원</option>
+        ${(cfg.members||[]).map(m=>`<option value="${m}"${monthFilters.member===m?' selected':''}>${escHtml(m)}</option>`).join('')}
+      </select>
+    </div>
+    <div class="card">
+      <div class="table-wrap">
+        <table class="monthly-table">
+          <thead><tr><th>연월</th><th>팀원</th><th>전체</th><th>완료</th><th>진행중</th><th>보류</th><th>완료율</th></tr></thead>
+          <tbody>${rows || '<tr><td colspan="7"><div class="empty-state"><div class="icon">📊</div><p>데이터가 없습니다.</p></div></td></tr>'}</tbody>
+        </table>
+      </div>
+    </div>`;
+};
+
+// ===================== WEEKLY REPORT =====================
+let weekOffset = 0;
+
+window.initWeekly = function(cont) {
+  weekOffset = 0;
+  renderWeekly(cont);
+};
+
+const weekFilters = { member:'all' };
+window.renderWeekly = function(cont) {
+  if ($('weekly-member-filter')) weekFilters.member = $('weekly-member-filter').value;
+  const now = new Date();
+  now.setDate(now.getDate() + weekOffset*7);
+  const day = now.getDay();
+  const mon = new Date(now); mon.setDate(now.getDate() - (day===0?6:day-1));
+  const fri = new Date(mon); fri.setDate(mon.getDate()+4);
+  const toISO = d => d.toISOString().slice(0,10);
+  const monStr = toISO(mon), friStr = toISO(fri);
+  const rangeLabel = `${mon.getFullYear()}년 ${mon.getMonth()+1}월 ${mon.getDate()}일 ~ ${fri.getMonth()+1}월 ${fri.getDate()}일`;
+
+  const targetMembers = session.role==='leader'
+    ? (weekFilters.member==='all' ? (cfg.members||[]) : [weekFilters.member])
+    : [session.name];
+
+  let reportHTML = '';
+  targetMembers.forEach(m => {
+    const mt = tasks.filter(t => t.member===m && t.date>=monStr && t.date<=friStr);
+    const byType = {'중점':[],'일상':[],'익월':[]};
+    mt.forEach(t => { if(byType[t.taskType]) byType[t.taskType].push(t); else byType['일상'].push(t); });
+
+    const done = mt.filter(t=>t.status==='처리완료').length;
+    const inprog = mt.filter(t=>t.status==='진행중').length;
+    const od = mt.filter(isOverdue).length;
+
+    const renderSec = (type, label, cls) => {
+      if (!byType[type].length) return '';
+      const items = byType[type].map(t =>
+        `<div class="week-task-row">
+          <div>${catBadge(t.category)}</div>
+          <div>
+            <div style="font-weight:600;">${escHtml(t.name)}</div>
+            ${t.desc?`<div style="color:var(--text-muted);font-size:12px;margin-top:2px;">${escHtml(t.desc)}</div>`:''}
+            ${t.note?`<div style="font-size:12px;color:#744210;background:#FFFBEB;padding:3px 6px;border-radius:4px;margin-top:4px;">💬 ${escHtml(t.note)}</div>`:''}
+          </div>
+          <div style="text-align:right;min-width:100px;">${progBar(t.progress)}<div style="margin-top:4px;">${statusBadge(t.status)}</div></div>
+        </div>`
+      ).join('');
+      return `<div class="report-section">
+        <div class="report-section-title ${cls}">${label} (${byType[type].length}건)</div>
+        ${items}
+      </div>`;
+    };
+
+    reportHTML += `<div class="pptx-member-block" style="margin-bottom:24px;">
+      <div class="pptx-member-header">주간보고 _ ${escHtml(m)}</div>
+      <div class="pptx-member-body">
+        <div style="display:flex;gap:16px;margin-bottom:16px;flex-wrap:wrap;">
+          <span style="font-size:13px;">📋 총 <strong>${mt.length}</strong>건</span>
+          <span style="font-size:13px;color:var(--success);">✅ 완료 <strong>${done}</strong>건</span>
+          <span style="font-size:13px;color:var(--info);">🔵 진행중 <strong>${inprog}</strong>건</span>
+          ${od>0?`<span style="font-size:13px;color:var(--accent);">기한초과 <strong>${od}</strong>건</span>`:''}
+        </div>
+        ${renderSec('중점','[중점] 주요 수행 업무','jungjeom')}
+        ${renderSec('일상','[일상] 일반 업무','ilsang')}
+        ${renderSec('익월','[익월] 다음 주 예정','ikmol')}
+        ${mt.length===0?'<div class="empty-state"><div class="icon">📭</div><p>이번 주 등록된 업무가 없습니다.</p></div>':''}
+      </div>
+    </div>`;
+  });
+
+  const memberSel = session.role==='leader' ? `
+    <select id="weekly-member-filter" onchange="weekFilters.member=this.value;renderWeekly($('content'))">
+      <option value="all"${weekFilters.member==='all'?' selected':''}>전체 팀원</option>
+      ${(cfg.members||[]).map(m=>`<option value="${m}"${weekFilters.member===m?' selected':''}>${escHtml(m)}</option>`).join('')}
+    </select>` : '';
+
+  cont.innerHTML = `
+    <div class="report-wrap">
+      <div class="report-header">
+        <div class="report-title">주간업무보고</div>
+        <div class="report-meta">경영기획팀 · ${rangeLabel}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
+        <button class="btn btn-outline btn-sm" onclick="weekOffset--;renderWeekly($('content'))">이전주</button>
+        <strong style="font-size:14px;">${rangeLabel}</strong>
+        <button class="btn btn-outline btn-sm" onclick="weekOffset++;renderWeekly($('content'))">다음주</button>
+        ${memberSel}
+        <div style="flex:1;"></div>
+        <button class="btn btn-ghost btn-sm" onclick="window.print()">인쇄</button>
+      </div>
+      ${reportHTML}
+    </div>`;
+};
+
+// ===================== MONTHLY REPORT (PPTX STYLE) =====================
+let mrMonth = getCurrentMonth();
+
+window.initMonthlyReport = function(cont) {
+  mrMonth = getCurrentMonth();
+  renderMonthlyReport(cont);
+};
+
+const mrFilters = { member:'all' };
+window.renderMonthlyReport = function(cont) {
+  if ($('mr-month')) mrMonth = $('mr-month').value || mrMonth;
+  if ($('mr-member')) mrFilters.member = $('mr-member').value;
+
+  const nextMonth = getNextMonth(mrMonth);
+  const [selY, selM] = mrMonth.split('-');
+  const titleDate = `${selY}년 ${parseInt(selM)}월 업무보고`;
+
+  const targetMembers = session.role==='leader'
+    ? (mrFilters.member==='all' ? (cfg.members||[]) : [mrFilters.member])
+    : [session.name];
+
+  let reportHTML = '';
+  targetMembers.forEach(m => {
+    const monthTasks = tasks.filter(t => t.member===m && (t.date||'').startsWith(mrMonth));
+    const jungjeom = monthTasks.filter(t => t.taskType==='중점');
+    const ilsang = monthTasks.filter(t => t.taskType==='일상');
+    const ikmol = tasks.filter(t =>
+      t.member===m && (
+        (t.taskType==='익월' && (t.date||'').startsWith(mrMonth)) ||
+        (t.due && t.due.startsWith(nextMonth) && t.status!=='처리완료')
+      )
+    );
+
+    function groupByCat(list) {
+      const g = {};
+      list.forEach(t => { if(!g[t.category]) g[t.category]=[]; g[t.category].push(t); });
+      return g;
+    }
+
+    function renderSection(list, label, cls) {
+      if (!list.length) return '';
+      const groups = groupByCat(list);
+      const html = Object.entries(groups).map(([cat, items]) => {
+        const taskHTML = items.map(t => {
+          const p = parseInt(t.progress)||0;
+          const progCls = p>=100?'p100':p>=50?'p50':'';
+          const od = isOverdue(t);
+          return `<div class="pptx-task-item">
+            <div class="task-name">
+              ${od?'<span style="color:var(--accent);">기한초과</span> ':''}${escHtml(t.name)}
+              <span class="task-prog ${progCls}">${p}%</span>
+              ${statusBadge(t.status)}
+            </div>
+            ${t.desc?`<div class="task-desc">${escHtml(t.desc)}</div>`:''}
+            ${t.note?`<div class="task-note">💬 ${escHtml(t.note)}</div>`:''}
+          </div>`;
+        }).join('');
+        return `<div class="pptx-cat-group">
+          <div class="pptx-cat-label"><span>[${escHtml(cat)}]</span></div>
+          ${taskHTML}
+        </div>`;
+      }).join('');
+      return `<div class="pptx-section">
+        <div class="pptx-section-label ${cls}">[${label}]</div>
+        ${html}
+      </div>`;
+    }
+
+    function renderIkmol(list) {
+      if (!list.length) return '';
+      const groups = groupByCat(list);
+      const html = Object.entries(groups).map(([cat, items]) => {
+        const taskHTML = items.map(t =>
+          `<div class="pptx-task-item">
+            <div class="task-name">${escHtml(t.name)}${t.due?` <span style="font-size:11px;color:var(--text-muted);">(~${fmt(t.due)})</span>`:''}</div>
+            ${t.desc?`<div class="task-desc">${escHtml(t.desc)}</div>`:''}
+          </div>`
+        ).join('');
+        return `<div class="pptx-cat-group">
+          <div class="pptx-cat-label"><span>[${escHtml(cat)}]</span></div>
+          ${taskHTML}
+        </div>`;
+      }).join('');
+      return `<div class="pptx-section">
+        <div class="pptx-section-label ikmol">익월 업무 계획</div>
+        ${html}
+      </div>`;
+    }
+
+    const noData = jungjeom.length===0 && ilsang.length===0 && ikmol.length===0;
+    reportHTML += `<div class="pptx-member-block">
+      <div class="pptx-member-header">업무보고 _ ${escHtml(m)}</div>
+      <div class="pptx-member-body">
+        ${noData
+          ? '<div class="empty-state"><div class="icon">📭</div><p>해당 월에 등록된 업무가 없습니다.</p></div>'
+          : renderSection(jungjeom,'중점','jungjeom') +
+            renderSection(ilsang,'일상','ilsang') +
+            renderIkmol(ikmol)
+        }
+      </div>
+    </div>`;
+  });
+
+  const memberSel = session.role==='leader' ? `
+    <select id="mr-member" onchange="mrFilters.member=this.value;renderMonthlyReport($('content'))">
+      <option value="all"${mrFilters.member==='all'?' selected':''}>전체 팀원</option>
+      ${(cfg.members||[]).map(m=>`<option value="${m}"${mrFilters.member===m?' selected':''}>${escHtml(m)}</option>`).join('')}
+    </select>` : '';
+
+  cont.innerHTML = `
+    <div class="report-wrap pptx-report">
+      <div class="report-header">
+        <div class="report-title">${titleDate}</div>
+        <div class="report-meta">경영기획팀 월간업무보고</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;flex-wrap:wrap;">
+        <label style="font-weight:600;color:var(--primary);">보고 연월</label>
+        <input type="month" id="mr-month" value="${mrMonth}" onchange="mrMonth=this.value;renderMonthlyReport($('content'))">
+        ${memberSel}
+        <div style="flex:1;"></div>
+        <button class="btn btn-outline btn-sm" onclick="window.print()">인쇄</button>
+        <button class="btn btn-ghost btn-sm" onclick="exportCSV()">📊 CSV</button>
+      </div>
+      <div style="font-size:13px;color:var(--text-muted);margin-bottom:20px;background:#EBF4FF;padding:10px 14px;border-radius:6px;">
+        [중점] 빨강 · [일상] 파랑 · 익월계획 주황 | 진행률 100% 완료 50%이상 | 기한초과
+      </div>
+      ${reportHTML}
+    </div>`;
+};
+
+// ===================== EXPORT CSV =====================
+window.exportCSV = function() {
+  const list = session.role==='leader' ? [...tasks] : tasks.filter(t=>t.member===session.name);
+  const headers = ['팀원','등록일','업무명','진행내용','분야','업무구분','진행률(%)','우선순위','완료예정일','상태','비고'];
+  const rows = list.map(t =>
+    [t.member,t.date,t.name,t.desc,t.category,t.taskType,t.progress,t.priority,t.due,t.status,t.note]
+    .map(v => `"${(v||'').toString().replace(/"/g,'""')}"`).join(',')
+  );
+  const csv = '﻿' + [headers.join(','),...rows].join('\r\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `업무보고_${today()}.csv`; a.click();
+};
+
+// ===================== RESET / LOGOUT =====================
+window.resetApp = function() {
+  if (!confirm('로그아웃 하시겠습니까?')) return;
+  if (syncInterval) clearInterval(syncInterval);
+  syncInterval = null;
+  sharedFolderHandle = null;
+  sessionStorage.removeItem('wrs_session');
+  session = { role:'', name:'' };
+  $('app').classList.add('hidden');
+  showLogin();
+};
+
+// ===================== PHASE 1 ADDITIONS =====================
+
+// [1] 고급 저장 방식 토글
+window.toggleAdvStorage = function() {
+  const sec = $('adv-storage-section');
+  if (!sec) return;
+  const hidden = sec.classList.toggle('hidden');
+  document.querySelector('.adv-toggle').textContent = hidden
+    ? '⚙️ 고급 저장 방식 변경 ▼'
+    : '⚙️ 고급 저장 방식 닫기 ▲';
+};
+
+// [2] 상태 → 진행률 자동 연동 (등록 폼)
+window.onNewStatusChange = function(val) {
+  if (val === '처리완료') setNewProg(100);
+};
+// [2] 상태 → 진행률 자동 연동 (수정 모달)
+window.onEditStatusChange = function(val) {
+  if (val === '처리완료') setEditProg(100);
+};
+
+// [3] 소프트 삭제 (isDeleted 플래그)
+let _deletedCache = null; // 되돌리기용 캐시
+window.del = async function(id) {
+  const task = tasks.find(t => t.id === id);
+  if (!task) return;
+  // 권한 체크: 팀원은 본인 것만 삭제
+  if (session.role === 'member' && task.member !== session.name) {
+    showToast('본인 업무만 삭제할 수 있습니다.', 'error'); return;
+  }
+  _deletedCache = { ...task };
+  if (cfg.storage === 'firebase' && _fbRefs) {
+    try { await _fbRefs.deleteDoc(_fbRefs.doc(_fbRefs.colRef, id)); }
+    catch(e) { tasks = tasks.filter(t => t.id !== id); saveLocal(); renderCurrentTab(); }
+  } else {
+    tasks = tasks.filter(t => t.id !== id);
+    saveLocal();
+    renderCurrentTab();
+  }
+  showUndoToast(`'${task.name}' 삭제됨`, undoDelete);
+};
+
+function undoDelete() {
+  if (!_deletedCache) return;
+  tasks.push(_deletedCache);
+  saveLocal();
+  renderCurrentTab();
+  showToast('삭제가 취소되었습니다.', 'success');
+  _deletedCache = null;
+}
+
+function showUndoToast(msg, undoFn) {
+  const toast = document.createElement('div');
+  toast.className = 'toast toast-warning show';
+  toast.innerHTML = `<div class="toast-undo-row"><span>${msg}</span><button onclick="(${undoFn.toString()})();this.closest('.toast').remove()">되돌리기</button></div>`;
+  document.body.appendChild(toast);
+  const timer = setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 5000);
+  toast.querySelector('button').addEventListener('click', () => clearTimeout(timer));
+}
+
+// [4] 수정 권한 체크 (팀원은 본인 업무만)
+window.openEdit = function(id) {
+  const t = tasks.find(x => x.id === id);
+  if (!t) return;
+  if (session.role === 'member' && t.member !== session.name) {
+    showToast('본인 업무만 수정할 수 있습니다.', 'error'); return;
+  }
+  $('edit-task-id').value = id;
+  $('edit-name').value = t.name || '';
+  $('edit-category').innerHTML = catOptions(t.category);
+  $('edit-desc').value = t.desc || '';
+  $('edit-type').value = t.taskType || '일상';
+  $('edit-priority').value = t.priority || 'D';
+  $('edit-due').value = t.due || '';
+  $('edit-status').value = t.status || '진행중';
+  $('edit-note').value = t.note || '';
+  setEditProg(t.progress || 0);
+  $('edit-modal').classList.remove('hidden');
+};
+
+// [5] 툴팁은 CSS로 처리 (HTML에 반영됨)
+
+// [6] 정렬 상태
+let mySort = { col: '', dir: 1 };
+let allSort = { col: '', dir: 1 };
+
+function sortTasks(list, col, dir) {
+  if (!col) return list;
+  return [...list].sort((a, b) => {
+    let av = a[col] || '', bv = b[col] || '';
+    if (col === 'progress') { av = parseInt(av) || 0; bv = parseInt(bv) || 0; }
+    if (av < bv) return -1 * dir;
+    if (av > bv) return 1 * dir;
+    return 0;
+  });
+}
+
+function thSort(id, col, dir) {
+  const th = document.getElementById(id);
+  if (!th) return;
+  th.innerHTML = th.dataset.label + ` <span class="sort-ic">${dir === 1 ? '▲' : '▼'}</span>`;
+}
+
+// [7] 날짜 범위 필터 상태
+const myFilters = { cat:'all', type:'all', stat:'all', prio:'all', search:'', dateFrom:'', dateTo:'' };
+const allFilters = { member:'all', cat:'all', type:'all', stat:'all', dateFrom:'', dateTo:'' };
+
+// [8] 스크롤 위치 저장·복원
+let _savedScrollY = 0;
+const _origRenderCurrentTab = window.renderCurrentTab;
+window.renderCurrentTab = function() {
+  _savedScrollY = window.scrollY;
+  _origRenderCurrentTab();
+  requestAnimationFrame(() => window.scrollTo(0, _savedScrollY));
+};
+
+// [9] 업무 데이터 백업·복원
+window.backupTasks = function() {
+  const blob = new Blob([JSON.stringify({ tasks, exportedAt: new Date().toISOString() }, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `workcheck_backup_${today()}.json`;
+  a.click();
+  showToast('업무 데이터가 백업되었습니다.', 'success');
+};
+
+window.restoreTasks = function() {
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = '.json';
+  inp.onchange = e => {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if (data.tasks && Array.isArray(data.tasks)) {
+          if (!confirm(`백업 파일에서 ${data.tasks.length}건을 불러옵니다. 현재 데이터에 병합됩니까?\n(확인=병합, 취소=전체교체)`)) {
+            tasks = data.tasks;
+          } else {
+            const existIds = new Set(tasks.map(t => t.id));
+            data.tasks.forEach(t => { if (!existIds.has(t.id)) tasks.push(t); });
+          }
+          saveLocal(); renderCurrentTab();
+          showToast(`${data.tasks.length}건 복원 완료`, 'success');
+        } else { showToast('올바른 백업 파일이 아닙니다.', 'error'); }
+      } catch(err) { showToast('파일 읽기 오류: ' + err.message, 'error'); }
+    };
+    reader.readAsText(file);
+  };
+  inp.click();
+};
+
+// [10] 진행률 버튼 함수
+window.setNewProg = function(val) {
+  const inp = $('new-progress'); if (inp) inp.value = val;
+  document.querySelectorAll('#new-prog-btns .prog-btn').forEach(b => {
+    b.classList.toggle('active', parseInt(b.textContent) === val);
+  });
+};
+
+window.setEditProg = function(val) {
+  const inp = $('edit-progress'); if (inp) inp.value = val;
+  const lbl = $('edit-prog-label'); if (lbl) lbl.textContent = val + '%';
+  document.querySelectorAll('#edit-prog-btns .prog-btn').forEach(b => {
+    b.classList.toggle('active', parseInt(b.textContent) === val);
+  });
+};
+
+// (구) Phase1 addTask 제거됨 — 최종 정의는 PHASE 3 ADDITIONS [Phase6 정리]
+
+// saveEdit 에 진행률·상태 연동 적용
+window.saveEdit = async function() {
+  const id = $('edit-task-id').value;
+  let progress = parseInt($('edit-progress').value) || 0;
+  let status = $('edit-status').value;
+  if (status === '처리완료') progress = 100;
+  if (progress === 100 && status === '진행중') status = '처리완료';
+  await upd(id, {
+    name: $('edit-name').value.trim(),
+    category: $('edit-category').value,
+    desc: $('edit-desc').value.trim(),
+    taskType: $('edit-type').value,
+    progress,
+    priority: $('edit-priority').value,
+    due: $('edit-due').value,
+    status,
+    note: $('edit-note').value.trim()
+  });
+  closeModal('edit-modal');
+  showToast('수정되었습니다.', 'success');
+};
+
+// [6][7][4][9] renderMy 업그레이드 — 정렬 + 날짜 필터 + 백업
+window.renderMy = function(cont) {
+  if ($('f-cat')) myFilters.cat = $('f-cat').value;
+  if ($('f-type')) myFilters.type = $('f-type').value;
+  if ($('f-stat')) myFilters.stat = $('f-stat').value;
+  if ($('f-prio')) myFilters.prio = $('f-prio').value;
+  if ($('f-search')) myFilters.search = $('f-search').value.toLowerCase();
+  if ($('f-date-from')) myFilters.dateFrom = $('f-date-from').value;
+  if ($('f-date-to')) myFilters.dateTo = $('f-date-to').value;
+  if ($('my-sort-col')) { mySort.col = $('my-sort-col').value; mySort.dir = parseInt($('my-sort-dir').value||'1'); }
+
+  const allMy = (window._showArchived ? tasks : tasks.filter(t => !t.isArchived)).filter(t => t.member === session.name);
+  let filtered = allMy;
+  if (myFilters.cat !== 'all') filtered = filtered.filter(t => t.category === myFilters.cat);
+  if (myFilters.type !== 'all') filtered = filtered.filter(t => t.taskType === myFilters.type);
+  if (myFilters.stat !== 'all') filtered = filtered.filter(t => t.status === myFilters.stat);
+  if (myFilters.prio !== 'all') filtered = filtered.filter(t => t.priority === myFilters.prio);
+  if (myFilters.search) filtered = filtered.filter(t =>
+    (t.name||'').toLowerCase().includes(myFilters.search) ||
+    (t.desc||'').toLowerCase().includes(myFilters.search) ||
+    (t.note||'').toLowerCase().includes(myFilters.search)
+  );
+  if (myFilters.dateFrom) filtered = filtered.filter(t => (t.date||'') >= myFilters.dateFrom);
+  if (myFilters.dateTo) filtered = filtered.filter(t => (t.date||'') <= myFilters.dateTo);
+  filtered = sortTasks(filtered, mySort.col, mySort.dir);
+
+  // [Phase7][1] 완료 업무 기본 접기 (상태 필터 미지정 시)
+  const myCompletedHidden = !window._showCompleted && myFilters.stat === 'all';
+  const myCompletedCount = filtered.filter(t => t.status === '처리완료').length;
+  if (myCompletedHidden) filtered = filtered.filter(t => t.status !== '처리완료');
+
+  const total=allMy.length, done=allMy.filter(t=>t.status==='처리완료').length,
+    inprog=allMy.filter(t=>t.status==='진행중').length, hold=allMy.filter(t=>t.status==='보류').length,
+    overdue=allMy.filter(isOverdue).length, jungjeom=allMy.filter(t=>t.taskType==='중점').length;
+
+  const sortOpts = ['','name','category','taskType','priority','progress','due','status']
+    .map(v => `<option value="${v}"${mySort.col===v?' selected':''}>${{'':"정렬없음",name:"업무명",category:"분야",taskType:"구분",priority:"우선순위",progress:"진행률",due:"완료예정일",status:"상태"}[v]}</option>`).join('');
+
+  let rows = '';
+  if (filtered.length === 0) {
+    rows = `<tr><td colspan="10"><div class="empty-state"><div class="icon">📭</div><p>등록된 업무가 없습니다.<br><button class="btn btn-primary btn-sm" style="margin-top:8px;" onclick="$('new-name').focus()">+ 첫 업무 등록하기</button></p></div></td></tr>`;
+  } else {
+    // [Phase8] 윈도잉: 많은 행은 일부만 먼저 렌더 (성능)
+    const _cap = window._myRowLimit || ROW_CAP;
+    const _shown = filtered.slice(0, _cap);
+    const _rest = filtered.length - _shown.length;
+    rows = _shown.map(t => {
+      const od=isOverdue(t), ds=isDueSoon(t);
+      const rowCls=od?'overdue':ds?'due-soon':t.status==='진행중'?'in-progress':'';
+      return `<tr class="${rowCls}">
+        <td style="white-space:nowrap;">${fmt(t.date)}</td>
+        <td>${catBadge(t.category)}</td>
+        <td>${typeBadge(t.taskType)}</td>
+        <td><div style="font-weight:600;">${escHtml(t.name)}</div>${t.desc?`<div style="color:var(--text-muted);font-size:12px;margin-top:2px;">${escHtml(t.desc)}</div>`:''}</td>
+        <td style="min-width:80px;">${progBar(t.progress)}</td>
+        <td style="white-space:nowrap;">${fmt(t.due)}${od?'<br><span style="color:var(--accent);font-size:11px;">기한초과</span>':''}</td>
+        <td>${prioBadge(t.priority)}</td>
+        <td>${statusBadge(t.status)}</td>
+        <td style="color:var(--text-muted);font-size:12px;max-width:100px;">${escHtml(t.note||'')}${t.adminComment?`<div class="admin-comment-box">💬 ${escHtml(t.adminComment)}</div>`:''}</td>
+        <td style="white-space:nowrap;">
+          ${t.confirmedBy?`<div class="confirmed-badge" style="margin-bottom:4px;">✅ 확인됨</div>`:`<div class="unconfirmed-badge" style="margin-bottom:4px;">미확인</div>`}
+          <button class="btn btn-outline btn-sm" onclick="openEdit('${t.id}')">수정</button>
+          <button class="btn btn-ghost btn-sm" style="margin-top:4px;" onclick="copyTask('${t.id}')" title="복사">복사</button>
+          <button class="btn btn-danger btn-sm" style="margin-top:4px;" onclick="del('${t.id}')">삭제</button>
+        </td>
+      </tr>`;
+    }).join('');
+    if (_rest > 0) rows += `<tr><td colspan="10" style="text-align:center;padding:12px;"><button class="btn btn-outline btn-sm" onclick="window._myRowLimit=(window._myRowLimit||window.ROW_CAP)+window.ROW_CAP;renderMy($('content'))">+ ${nf(_rest)}건 더 보기</button></td></tr>`;
+  }
+
+  cont.innerHTML = `
+    ${folderAlertBanner()}
+    <div class="data-mgmt">
+      <h4>📦 데이터 관리</h4>
+      <div class="btn-row">
+        <button class="btn btn-outline btn-sm" onclick="backupTasks()">💾 백업 (JSON)</button>
+        <button class="btn btn-ghost btn-sm" onclick="restoreTasks()">📂 복원</button>
+        <button class="btn btn-outline btn-sm" onclick="exportCSV()">📊 CSV 내보내기</button>
+      </div>
+    </div>
+    <div class="stat-cards">
+      <div class="stat-card"><div class="num">${total}</div><div class="lbl">전체</div></div>
+      <div class="stat-card"><div class="num green">${done}</div><div class="lbl">완료</div></div>
+      <div class="stat-card"><div class="num">${inprog}</div><div class="lbl">진행중</div></div>
+      <div class="stat-card"><div class="num yellow">${hold}</div><div class="lbl">보류</div></div>
+      <div class="stat-card"><div class="num red">${overdue}</div><div class="lbl">기한초과</div></div>
+      <div class="stat-card"><div class="num" style="color:#C53030;">${jungjeom}</div><div class="lbl">중점업무</div></div>
+    </div>
+    ${addFormHTML()}
+    <div class="card">
+      <div class="section-header-row">
+        <h2>내 업무 목록</h2>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-ghost btn-sm" onclick="window.print()">인쇄</button>
+        </div>
+      </div>
+      <div class="filter-bar">
+        <select id="f-cat" onchange="myFilters.cat=this.value;renderMy($('content'))">
+          <option value="all">전체 분야</option>
+          ${CATEGORIES.map(c=>`<option value="${c}"${myFilters.cat===c?' selected':''}>${c}</option>`).join('')}
+        </select>
+        <select id="f-type" onchange="myFilters.type=this.value;renderMy($('content'))">
+          <option value="all"${myFilters.type==='all'?' selected':''}>전체 구분</option>
+          <option value="중점"${myFilters.type==='중점'?' selected':''}>중점</option>
+          <option value="일상"${myFilters.type==='일상'?' selected':''}>일상</option>
+          <option value="익월"${myFilters.type==='익월'?' selected':''}>익월</option>
+        </select>
+        <select id="f-stat" onchange="myFilters.stat=this.value;renderMy($('content'))">
+          <option value="all"${myFilters.stat==='all'?' selected':''}>전체 상태</option>
+          <option value="진행중"${myFilters.stat==='진행중'?' selected':''}>진행중</option>
+          <option value="처리완료"${myFilters.stat==='처리완료'?' selected':''}>처리완료</option>
+          <option value="보류"${myFilters.stat==='보류'?' selected':''}>보류</option>
+        </select>
+        <select id="f-prio" onchange="myFilters.prio=this.value;renderMy($('content'))">
+          <option value="all"${myFilters.prio==='all'?' selected':''}>전체 우선순위</option>
+          <option value="A"${myFilters.prio==='A'?' selected':''}>A</option>
+          <option value="B"${myFilters.prio==='B'?' selected':''}>B</option>
+          <option value="C"${myFilters.prio==='C'?' selected':''}>C</option>
+          <option value="D"${myFilters.prio==='D'?' selected':''}>D</option>
+        </select>
+        <input type="text" id="f-search" placeholder="검색..." value="${escHtml(myFilters.search)}" oninput="myFilters.search=this.value.toLowerCase();renderMy($('content'))">
+        <div class="date-range">
+          <input type="date" id="f-date-from" value="${myFilters.dateFrom}" onchange="myFilters.dateFrom=this.value;renderMy($('content'))" title="시작일">
+          <span>~</span>
+          <input type="date" id="f-date-to" value="${myFilters.dateTo}" onchange="myFilters.dateTo=this.value;renderMy($('content'))" title="종료일">
+        </div>
+        <select id="my-sort-col" onchange="mySort.col=this.value;renderMy($('content'))">
+          ${sortOpts}
+        </select>
+        <button class="btn btn-ghost btn-sm" onclick="mySort.dir*=-1;renderMy($('content'))">${mySort.dir===1?'▲ 오름차순':'▼ 내림차순'}</button>
+        <input type="hidden" id="my-sort-dir" value="${mySort.dir}">
+        ${myCompletedCount>0 && myCompletedHidden ? `<button class="btn btn-ghost btn-sm" onclick="window._showCompleted=true;renderMy($('content'))" title="숨겨진 완료 업무 보기">✅ 완료 ${myCompletedCount}건 펼치기 ▼</button>` : ''}
+        ${window._showCompleted ? `<button class="btn btn-ghost btn-sm" onclick="window._showCompleted=false;renderMy($('content'))">완료 업무 접기 ▲</button>` : ''}
+        <span style="color:var(--text-muted);font-size:13px;">${filtered.length}건${myCompletedHidden&&myCompletedCount>0?` <span style="opacity:.7;">(완료 ${myCompletedCount}건 숨김)</span>`:''}</span>
+      </div>
+      <div class="table-wrap">
+        <table class="task-table">
+          <thead><tr>
+            <th>등록일</th><th>분야</th><th>구분</th><th>업무명 / 진행내용</th>
+            <th>진행률</th><th>완료예정일</th><th>우선순위</th><th>처리여부</th><th>비고</th><th>관리</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      <div style="margin-top:10px;font-size:12px;color:var(--text-muted);">
+        <span style="background:#FFF5F5;padding:2px 6px;border-radius:3px;">기한초과</span>
+        <span style="background:#FFFBEB;padding:2px 6px;border-radius:3px;margin-left:4px;">7일 내 마감</span>
+        <span style="background:#F0FFF4;padding:2px 6px;border-radius:3px;margin-left:4px;">진행중</span>
+      </div>
+    </div>`;
+};
+
+// [4][6][7][9] renderAll 업그레이드 — 권한 분리 + 정렬 + 날짜 필터 + 백업
+window.renderAll = function(cont) {
+  if ($('all-member-filter')) allFilters.member = $('all-member-filter').value;
+  if ($('all-cat-filter')) allFilters.cat = $('all-cat-filter').value;
+  if ($('all-type-filter')) allFilters.type = $('all-type-filter').value;
+  if ($('all-stat-filter')) allFilters.stat = $('all-stat-filter').value;
+  if ($('all-date-from')) allFilters.dateFrom = $('all-date-from').value;
+  if ($('all-date-to')) allFilters.dateTo = $('all-date-to').value;
+  if ($('all-sort-col')) { allSort.col = $('all-sort-col').value; allSort.dir = parseInt($('all-sort-dir').value||'1'); }
+
+  const issues = tasks.filter(isOverdue);
+  let issueBand = '';
+  if (issues.length > 0) {
+    const items = issues.slice(0,8).map(t =>
+      `<div class="issue-item">
+        ${typeBadge(t.taskType)}
+        <strong>${escHtml(t.member)}</strong>
+        <span>${escHtml(t.name)}</span>
+        ${catBadge(t.category)}
+        <span style="color:var(--accent);font-size:12px;">📅 ${fmt(t.due)}</span>
+        ${t.note?`<span style="color:var(--text-muted);font-size:12px;">💬 ${escHtml(t.note)}</span>`:''}
+      </div>`
+    ).join('');
+    issueBand = `<div class="issue-band"><h3>기한 초과 업무 (${issues.length}건)</h3>${items}${issues.length>8?`<div style="font-size:12px;color:var(--accent);margin-top:6px;">+ 외 ${issues.length-8}건</div>`:''}</div>`;
+  }
+
+  const memberCards = (cfg.members||[]).map(m => {
+    const mt=tasks.filter(t=>t.member===m);
+    const done=mt.filter(t=>t.status==='처리완료').length, od=mt.filter(isOverdue).length;
+    const avgProg=mt.length>0?Math.round(mt.reduce((a,t)=>a+(parseInt(t.progress)||0),0)/mt.length):0;
+    return `<div class="member-card">
+      <h3>👤 ${escHtml(m)}</h3>
+      <div class="mc-stats">
+        <div class="mc-stat"><div class="n" style="color:var(--primary)">${mt.length}</div><div class="l">전체</div></div>
+        <div class="mc-stat"><div class="n" style="color:var(--success)">${done}</div><div class="l">완료</div></div>
+        <div class="mc-stat"><div class="n" style="color:var(--accent)">${od}</div><div class="l">초과</div></div>
+      </div>
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">평균 진행률 ${avgProg}%</div>
+      <div class="prog-wrap"><div class="prog-fill ${avgProg>=100?'done':''}" style="width:${avgProg}%"></div></div>
+    </div>`;
+  }).join('');
+
+  let filtered = window._showArchived ? [...tasks] : tasks.filter(t=>!t.isArchived);
+  if (allFilters.member!=='all') filtered=filtered.filter(t=>t.member===allFilters.member);
+  if (allFilters.cat!=='all') filtered=filtered.filter(t=>t.category===allFilters.cat);
+  if (allFilters.type!=='all') filtered=filtered.filter(t=>t.taskType===allFilters.type);
+  if (allFilters.stat!=='all') filtered=filtered.filter(t=>t.status===allFilters.stat);
+  if (allFilters.dateFrom) filtered=filtered.filter(t=>(t.date||'')>=allFilters.dateFrom);
+  if (allFilters.dateTo) filtered=filtered.filter(t=>(t.date||'')<=allFilters.dateTo);
+  filtered = sortTasks(filtered, allSort.col, allSort.dir);
+
+  const sortOpts = ['','name','member','category','taskType','priority','progress','due','status']
+    .map(v=>`<option value="${v}"${allSort.col===v?' selected':''}>${{'':"정렬없음",name:"업무명",member:"담당자",category:"분야",taskType:"구분",priority:"우선순위",progress:"진행률",due:"완료예정일",status:"상태"}[v]}</option>`).join('');
+
+  // [Phase8] 윈도잉: 많은 행은 일부만 먼저 렌더 (성능)
+  const _allCap = window._allRowLimit || ROW_CAP;
+  const _allShown = filtered.slice(0, _allCap);
+  const _allRest = filtered.length - _allShown.length;
+  let rows = _allShown.map(t => {
+    const od=isOverdue(t), ds=isDueSoon(t);
+    const rowCls=od?'overdue':ds?'due-soon':t.status==='진행중'?'in-progress':'';
+    // [4] 팀원 권한: 본인 업무만 수정·삭제 가능
+    const canEdit = session.role !== 'member' || t.member === session.name;
+    const confirmBtn = session.role === 'leader'
+      ? `<button class="btn btn-sm" style="margin-bottom:4px;background:${t.confirmedBy?'#C6F6D5;color:#276749':'#E2E8F0;color:#4A5568'};" onclick="toggleConfirm('${t.id}')">${t.confirmedBy?'✅ 확인됨':'☐ 확인'}</button>`
+      : (t.confirmedBy ? `<div class="confirmed-badge" style="margin-bottom:4px;">✅ 확인됨</div>` : '');
+    const editBtns = canEdit
+      ? `${confirmBtn}<button class="btn btn-outline btn-sm" onclick="openEdit('${t.id}')">수정</button>
+         <button class="btn btn-ghost btn-sm" style="margin-top:4px;" onclick="copyTask('${t.id}')">복사</button>
+         <button class="btn btn-danger btn-sm" style="margin-top:4px;" onclick="del('${t.id}')">삭제</button>`
+      : `${confirmBtn}<span style="font-size:11px;color:var(--text-muted);">조회전용</span>`;
+    return `<tr class="${rowCls}">
+      <td><strong>${escHtml(t.member)}</strong></td>
+      <td style="white-space:nowrap;">${fmt(t.date)}</td>
+      <td><div style="font-weight:600;">${escHtml(t.name)}</div>${t.desc?`<div style="color:var(--text-muted);font-size:12px;margin-top:2px;">${escHtml(t.desc)}</div>`:''}</td>
+      <td>${catBadge(t.category)}</td>
+      <td>${typeBadge(t.taskType)}</td>
+      <td>${prioBadge(t.priority)}</td>
+      <td style="min-width:80px;">${progBar(t.progress)}</td>
+      <td style="white-space:nowrap;">${fmt(t.due)}${od?'<br><span style="color:var(--accent);font-size:11px;">초과</span>':''}</td>
+      <td>${statusBadge(t.status)}</td>
+      <td style="color:var(--text-muted);font-size:12px;max-width:100px;">${escHtml(t.note||'')}</td>
+      <td style="white-space:nowrap;">${editBtns}</td>
+    </tr>`;
+  }).join('') || `<tr><td colspan="11"><div class="empty-state"><div class="icon">📭</div><p>등록된 업무가 없습니다.</p></div></td></tr>`;
+  if (_allRest > 0) rows += `<tr><td colspan="11" style="text-align:center;padding:12px;"><button class="btn btn-outline btn-sm" onclick="window._allRowLimit=(window._allRowLimit||window.ROW_CAP)+window.ROW_CAP;renderAll($('content'))">+ ${nf(_allRest)}건 더 보기</button></td></tr>`;
+
+  cont.innerHTML = `
+    ${issueBand}
+    <div class="data-mgmt">
+      <h4>📦 데이터 관리</h4>
+      <div class="btn-row">
+        <button class="btn btn-outline btn-sm" onclick="backupTasks()">💾 백업 (JSON)</button>
+        <button class="btn btn-ghost btn-sm" onclick="restoreTasks()">📂 복원</button>
+        <button class="btn btn-outline btn-sm" onclick="exportCSV()">📊 CSV 내보내기</button>
+      </div>
+    </div>
+    <div class="member-cards">${memberCards||'<div style="color:var(--text-muted);">팀원 정보 없음</div>'}</div>
+    <div class="card">
+      <div class="section-header-row">
+        <h2>전체 업무 현황</h2>
+        <button class="btn btn-ghost btn-sm" onclick="window.print()">인쇄</button>
+      </div>
+      <div class="filter-bar">
+        <select id="all-member-filter" onchange="allFilters.member=this.value;renderAll($('content'))">
+          <option value="all"${allFilters.member==='all'?' selected':''}>전체 팀원</option>
+          ${(cfg.members||[]).map(m=>`<option value="${m}"${allFilters.member===m?' selected':''}>${escHtml(m)}</option>`).join('')}
+        </select>
+        <select id="all-cat-filter" onchange="allFilters.cat=this.value;renderAll($('content'))">
+          <option value="all"${allFilters.cat==='all'?' selected':''}>전체 분야</option>
+          ${CATEGORIES.map(c=>`<option value="${c}"${allFilters.cat===c?' selected':''}>${c}</option>`).join('')}
+        </select>
+        <select id="all-type-filter" onchange="allFilters.type=this.value;renderAll($('content'))">
+          <option value="all"${allFilters.type==='all'?' selected':''}>전체 구분</option>
+          <option value="중점"${allFilters.type==='중점'?' selected':''}>중점</option>
+          <option value="일상"${allFilters.type==='일상'?' selected':''}>일상</option>
+          <option value="익월"${allFilters.type==='익월'?' selected':''}>익월</option>
+        </select>
+        <select id="all-stat-filter" onchange="allFilters.stat=this.value;renderAll($('content'))">
+          <option value="all"${allFilters.stat==='all'?' selected':''}>전체 상태</option>
+          <option value="진행중"${allFilters.stat==='진행중'?' selected':''}>진행중</option>
+          <option value="처리완료"${allFilters.stat==='처리완료'?' selected':''}>처리완료</option>
+          <option value="보류"${allFilters.stat==='보류'?' selected':''}>보류</option>
+        </select>
+        <div class="date-range">
+          <input type="date" id="all-date-from" value="${allFilters.dateFrom}" onchange="allFilters.dateFrom=this.value;renderAll($('content'))">
+          <span>~</span>
+          <input type="date" id="all-date-to" value="${allFilters.dateTo}" onchange="allFilters.dateTo=this.value;renderAll($('content'))">
+        </div>
+        <select id="all-sort-col" onchange="allSort.col=this.value;renderAll($('content'))">${sortOpts}</select>
+        <button class="btn btn-ghost btn-sm" onclick="allSort.dir*=-1;renderAll($('content'))">${allSort.dir===1?'▲':'▼'}</button>
+        <input type="hidden" id="all-sort-dir" value="${allSort.dir}">
+        <span style="color:var(--text-muted);font-size:13px;">${filtered.length}건</span>
+      </div>
+      <div class="table-wrap">
+        <table class="task-table">
+          <thead><tr>
+            <th>담당자</th><th>등록일</th><th>업무명 / 진행내용</th><th>분야</th><th>구분</th>
+            <th>우선순위</th><th>진행률</th><th>완료예정일</th><th>상태</th><th>비고</th><th>관리</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>`;
+};
+
+// ===================== PHASE 2 ADDITIONS =====================
+
+// openEdit: monthComment 필드 로드
+const _p1OpenEdit = window.openEdit;
+window.openEdit = function(id) {
+  _p1OpenEdit(id);
+  const t = tasks.find(x => x.id === id);
+  if (t) {
+    const mc = $('edit-month-comment');
+    if (mc) mc.value = t.monthComment || '';
+  }
+};
+
+// saveEdit: monthComment 저장 + 상태·진행률 연동
+window.saveEdit = async function() {
+  const id = $('edit-task-id').value;
+  let progress = parseInt($('edit-progress').value) || 0;
+  let status = $('edit-status').value;
+  if (status === '처리완료') progress = 100;
+  if (progress === 100 && status === '진행중') status = '처리완료';
+  await upd(id, {
+    name: $('edit-name').value.trim(),
+    category: $('edit-category').value,
+    desc: $('edit-desc').value.trim(),
+    taskType: $('edit-type').value,
+    progress, priority: $('edit-priority').value,
+    due: $('edit-due').value, status,
+    note: $('edit-note').value.trim(),
+    monthComment: ($('edit-month-comment') || {}).value?.trim() || ''
+  });
+  closeModal('edit-modal');
+  showToast('수정되었습니다.', 'success');
+};
+
+// (구) Phase2 addTask 제거됨 — 최종 정의는 PHASE 3 ADDITIONS [Phase6 정리]
+
+// ── 트렌드 계산 헬퍼 (항목 13) ──
+function calcMonthRate(memberList, month) {
+  const t = tasks.filter(x => memberList.includes(x.member) && (x.date||'').startsWith(month));
+  if (!t.length) return null;
+  return Math.round(t.filter(x => x.status === '처리완료').length / t.length * 100);
+}
+function trendBadge(cur, prev) {
+  if (prev === null || cur === null) return '';
+  const diff = cur - prev;
+  if (diff > 0) return `<span class="trend-up">▲ ${diff}%p</span>`;
+  if (diff < 0) return `<span class="trend-dn">▼ ${Math.abs(diff)}%p</span>`;
+  return `<span class="trend-eq">─ 동일</span>`;
+}
+
+// ── 자동 해석 문장 생성 (항목 18) ──
+function genInterpretation(members, month, curRate, prevRate) {
+  const sentences = [];
+  const prevMonth = (() => {
+    const [y,m] = month.split('-').map(Number);
+    const d = new Date(y, m-2, 1);
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+  })();
+  const allMonth = tasks.filter(t => members.includes(t.member) && (t.date||'').startsWith(month));
+  const overdueN = allMonth.filter(isOverdue).length;
+  const jungjeomN = allMonth.filter(t => t.taskType==='중점').length;
+  const jungjeomDone = allMonth.filter(t => t.taskType==='중점' && t.status==='처리완료').length;
+  const ikmolN = tasks.filter(t => members.includes(t.member) && t.taskType==='익월' && (t.date||'').startsWith(month)).length;
+
+  if (curRate !== null) {
+    if (curRate >= 80) sentences.push(`✅ 이번 달 전체 완료율이 <strong>${curRate}%</strong>로 양호한 수준입니다.`);
+    else if (curRate >= 60) sentences.push(`🔵 이번 달 전체 완료율이 <strong>${curRate}%</strong>로 보통 수준입니다.`);
+    else sentences.push(`⚠️ 이번 달 전체 완료율이 <strong>${curRate}%</strong>로 목표 대비 낮습니다.`);
+  }
+  if (prevRate !== null && curRate !== null) {
+    const diff = curRate - prevRate;
+    if (diff > 0) sentences.push(`📈 전월(${prevMonth}) 대비 완료율이 <strong>${diff}%p 상승</strong>하였습니다.`);
+    else if (diff < 0) sentences.push(`📉 전월(${prevMonth}) 대비 완료율이 <strong>${Math.abs(diff)}%p 하락</strong>하였습니다. 원인 파악이 필요합니다.`);
+  }
+  if (jungjeomN > 0) {
+    const jRate = Math.round(jungjeomDone/jungjeomN*100);
+    sentences.push(`🎯 중점업무 달성률: <strong>${jRate}%</strong> (${jungjeomDone}/${jungjeomN}건)`);
+  }
+  if (overdueN > 0) sentences.push(`🚨 기한 초과 업무가 <strong>${overdueN}건</strong> 있습니다. 조치 계획을 확인하세요.`);
+  if (ikmolN === 0) sentences.push(`⚡ 익월 계획이 등록되지 않았습니다. 다음 달 업무를 사전에 등록해주세요.`);
+  return sentences;
+}
+
+// ── 액션 포인트 대시보드 (항목 14) ──
+window.renderDashboard = function(cont) {
+  const members = cfg.members || [];
+  const curMonth = getCurrentMonth();
+  const allTasks = tasks.filter(t => !t.isArchived);
+
+  const overdueTasks = allTasks.filter(isOverdue);
+  const dueSoon = allTasks.filter(isDueSoon);
+  const longInactive = allTasks.filter(t => {
+    if (t.status === '처리완료') return false;
+    const daysSince = (Date.now() - (t.createdAt || 0)) / 86400000;
+    return daysSince > 14 && (t.progress || 0) === 0;
+  });
+
+  const curRate = calcMonthRate(members, curMonth);
+  const prevMonth = (() => { const [y,m]=curMonth.split('-').map(Number); const d=new Date(y,m-2,1); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; })();
+  const prevRate = calcMonthRate(members, prevMonth);
+
+  // 팀원별 요약
+  const memberRows = members.map(m => {
+    const mt = allTasks.filter(t => t.member===m && (t.date||'').startsWith(curMonth));
+    const done = mt.filter(t=>t.status==='처리완료').length;
+    const rate = mt.length ? Math.round(done/mt.length*100) : 0;
+    const od = mt.filter(isOverdue).length;
+    const prev = calcMonthRate([m], prevMonth);
+    const trend = prev !== null ? trendBadge(rate, prev) : '';
+    return `<div class="action-item">
+      <strong style="min-width:60px;">${escHtml(m)}</strong>
+      <span>전체 ${mt.length}건</span>
+      <span style="color:var(--success);">완료 ${done}건</span>
+      <span>완료율 <strong>${rate}%</strong> ${trend}</span>
+      ${od>0?`<span style="color:var(--accent);">기한초과 ${od}건</span>`:''}
+    </div>`;
+  }).join('');
+
+  const overdueItems = overdueTasks.slice(0,6).map(t =>
+    `<div class="action-item">
+      <span style="color:var(--accent);font-weight:700;">D+${Math.floor((new Date()-new Date(t.due))/86400000)}일</span>
+      <strong>${escHtml(t.member)}</strong>
+      <span>${escHtml(t.name)}</span>
+      <button class="btn btn-outline btn-sm" onclick="openEdit('${t.id}')">처리</button>
+    </div>`).join('') || '<div style="color:var(--text-muted);font-size:13px;padding:4px;">기한 초과 업무가 없습니다 ✅</div>';
+
+  const dueSoonItems = dueSoon.slice(0,6).map(t => {
+    const diff = Math.ceil((new Date(t.due)-new Date(today()))/86400000);
+    return `<div class="action-item">
+      <span style="color:var(--warning);font-weight:700;">D-${diff}</span>
+      <strong>${escHtml(t.member)}</strong>
+      <span>${escHtml(t.name)}</span>
+      ${progBar(t.progress)}
+    </div>`;
+  }).join('') || '<div style="color:var(--text-muted);font-size:13px;padding:4px;">7일 내 마감 업무가 없습니다 ✅</div>';
+
+  const inactiveItems = longInactive.slice(0,6).map(t =>
+    `<div class="action-item">
+      <strong>${escHtml(t.member)}</strong>
+      <span>${escHtml(t.name)}</span>
+      <span style="color:var(--text-muted);font-size:12px;">진행률 0% · 등록 후 ${Math.floor((Date.now()-(t.createdAt||0))/86400000)}일 경과</span>
+      <button class="btn btn-outline btn-sm" onclick="openEdit('${t.id}')">업데이트</button>
+    </div>`).join('') || '<div style="color:var(--text-muted);font-size:13px;padding:4px;">장기 미진행 업무가 없습니다 ✅</div>';
+
+  const interps = genInterpretation(members, curMonth, curRate, prevRate);
+  const interpHTML = interps.map(s=>`<div style="margin-bottom:6px;">• ${s}</div>`).join('');
+
+  cont.innerHTML = `
+    <div class="exec-summary">
+      <h2>📊 ${curMonth.replace('-','년 ')}월 팀 현황 대시보드</h2>
+      <div class="sub">경영기획팀 · 총괄 조회</div>
+      <div class="exec-kpi">
+        <div class="exec-kpi-item"><div class="kv">${allTasks.filter(t=>(t.date||'').startsWith(curMonth)).length}</div><div class="kl">이번달 전체</div></div>
+        <div class="exec-kpi-item"><div class="kv">${curRate !== null ? curRate+'%' : '-'}</div><div class="kl">완료율 ${trendBadge(curRate,prevRate)}</div></div>
+        <div class="exec-kpi-item"><div class="kv" style="color:#FC8181;">${overdueTasks.length}</div><div class="kl">기한초과</div></div>
+        <div class="exec-kpi-item"><div class="kv" style="color:#F6AD55;">${dueSoon.length}</div><div class="kl">7일내마감</div></div>
+        <div class="exec-kpi-item"><div class="kv" style="color:#68D391;">${allTasks.filter(t=>t.status==='처리완료'&&(t.date||'').startsWith(curMonth)).length}</div><div class="kl">이번달완료</div></div>
+      </div>
+      ${interpHTML ? `<div class="exec-interp">${interpHTML}</div>` : ''}
+    </div>
+
+    <div class="action-grid">
+      <div class="action-card red">
+        <h3>🚨 즉시 조치 필요 <span style="background:var(--accent);color:#fff;padding:2px 8px;border-radius:10px;font-size:11px;">${overdueTasks.length}</span></h3>
+        ${overdueItems}
+      </div>
+      <div class="action-card orange">
+        <h3>⏰ 7일 내 마감 <span style="background:var(--warning);color:#fff;padding:2px 8px;border-radius:10px;font-size:11px;">${dueSoon.length}</span></h3>
+        ${dueSoonItems}
+      </div>
+      <div class="action-card blue">
+        <h3>💤 장기 미진행 <span style="background:var(--info);color:#fff;padding:2px 8px;border-radius:10px;font-size:11px;">${longInactive.length}</span></h3>
+        ${inactiveItems}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-header-row"><h2>팀원별 이번달 현황</h2></div>
+      ${memberRows || '<div class="empty-state"><div class="icon">👥</div><p>팀원 정보 없음</p></div>'}
+    </div>`;
+};
+
+// ── 월간보고 전면 개선: Executive Summary + 커버 + 트렌드 + 해석 + 익월경고 (항목 11~13, 16~18) ──
+window.initMonthlyReport = function(cont) {
+  mrMonth = getCurrentMonth();
+  renderMonthlyReport(cont);
+};
+
+window.renderMonthlyReport = function(cont) {
+  if ($('mr-month')) mrMonth = $('mr-month').value || mrMonth;
+  if ($('mr-member')) mrFilters.member = $('mr-member').value;
+
+  const nextMonth = getNextMonth(mrMonth);
+  const [selY, selM] = mrMonth.split('-');
+  const titleDate = `${selY}년 ${parseInt(selM)}월 업무보고`;
+  const members = cfg.members || [];
+  const targetMembers = session.role==='leader'
+    ? (mrFilters.member==='all' ? members : [mrFilters.member])
+    : [session.name];
+
+  // 전월 계산
+  const [py, pm] = mrMonth.split('-').map(Number);
+  const pd = new Date(py, pm-2, 1);
+  const prevMonth = `${pd.getFullYear()}-${String(pd.getMonth()+1).padStart(2,'0')}`;
+
+  // 팀 전체 집계
+  const allMonthTasks = tasks.filter(t => targetMembers.includes(t.member) && (t.date||'').startsWith(mrMonth));
+  const totalN = allMonthTasks.length;
+  const doneN = allMonthTasks.filter(t=>t.status==='처리완료').length;
+  const overdueN = allMonthTasks.filter(isOverdue).length;
+  const jungjeomAll = allMonthTasks.filter(t=>t.taskType==='중점');
+  const jDone = jungjeomAll.filter(t=>t.status==='처리완료').length;
+  const curRate = totalN ? Math.round(doneN/totalN*100) : 0;
+  const prevRate = calcMonthRate(targetMembers, prevMonth);
+  const ikmolWarning = tasks.filter(t => targetMembers.includes(t.member) && t.taskType==='익월' && (t.date||'').startsWith(mrMonth)).length === 0;
+
+  // 3대 성과: 완료된 중점업무 우선, 없으면 완료된 일반업무
+  const top3 = [
+    ...allMonthTasks.filter(t=>t.taskType==='중점'&&t.status==='처리완료'),
+    ...allMonthTasks.filter(t=>t.taskType!=='중점'&&t.status==='처리완료')
+  ].slice(0,3);
+
+  // 3대 이슈: 기한초과 + 이슈 있는 업무
+  const top3issues = allMonthTasks.filter(t=>isOverdue(t)||t.note).slice(0,3);
+
+  // 자동 해석 문장
+  const interps = genInterpretation(targetMembers, mrMonth, curRate, prevRate);
+
+  // Executive Summary HTML
+  const execSummary = `
+    <div class="exec-summary" style="margin-bottom:24px;">
+      <h2>📋 ${titleDate} — Executive Summary</h2>
+      <div class="sub">경영기획팀 월간업무보고</div>
+      <div class="exec-kpi">
+        <div class="exec-kpi-item"><div class="kv">${totalN}</div><div class="kl">전체 업무</div></div>
+        <div class="exec-kpi-item"><div class="kv">${curRate}%</div><div class="kl">완료율 ${trendBadge(curRate,prevRate)}</div></div>
+        <div class="exec-kpi-item"><div class="kv" style="color:#FC8181;">${overdueN}</div><div class="kl">기한초과</div></div>
+        <div class="exec-kpi-item"><div class="kv">${jungjeomAll.length>0?Math.round(jDone/jungjeomAll.length*100)+'%':'-'}</div><div class="kl">중점달성률</div></div>
+        <div class="exec-kpi-item"><div class="kv" style="color:#68D391;">${doneN}</div><div class="kl">완료건수</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+        <div class="exec-list">
+          <h4>🏆 이달의 3대 성과</h4>
+          ${top3.length ? top3.map(t=>`<div class="exec-list-item">${catBadge(t.category)} ${escHtml(t.name)}</div>`).join('') : '<div class="exec-list-item" style="opacity:.6;">완료된 업무가 없습니다</div>'}
+        </div>
+        <div class="exec-list">
+          <h4>⚠️ 주요 이슈</h4>
+          ${top3issues.length ? top3issues.map(t=>`<div class="exec-list-item">${escHtml(t.member)}: ${escHtml(t.name)}${t.note?` — ${escHtml(t.note)}`:''}</div>`).join('') : '<div class="exec-list-item" style="opacity:.6;">특이 이슈 없음 ✅</div>'}
+        </div>
+      </div>
+      ${interps.length ? `<div class="exec-interp">${interps.map(s=>`<div style="margin-bottom:4px;">• ${s}</div>`).join('')}</div>` : ''}
+    </div>`;
+
+  // 익월 경고 (항목 16)
+  const ikmolWarn = ikmolWarning
+    ? `<div style="background:#FFFBEB;border:1px solid #F6AD55;border-radius:6px;padding:10px 16px;margin-bottom:16px;font-size:13px;">
+        ⚡ <strong>익월 업무 계획이 등록되지 않았습니다.</strong> 다음 달 업무를 미리 등록해주세요.
+       </div>` : '';
+
+  // 팀원별 상세 보고
+  let reportHTML = '';
+  targetMembers.forEach(m => {
+    const monthTasks = tasks.filter(t => t.member===m && (t.date||'').startsWith(mrMonth));
+    const jungjeom = monthTasks.filter(t=>t.taskType==='중점');
+    const ilsang = monthTasks.filter(t=>t.taskType==='일상');
+    const ikmol = tasks.filter(t =>
+      t.member===m && (
+        (t.taskType==='익월' && (t.date||'').startsWith(mrMonth)) ||
+        (t.due && t.due.startsWith(nextMonth) && t.status!=='처리완료')
+      )
+    );
+
+    // 이달의 코멘트 수집
+    const comments = monthTasks.filter(t=>t.monthComment).map(t=>
+      `<div class="month-comment-box"><div class="mc-label">💬 ${escHtml(t.name)}</div>${escHtml(t.monthComment)}</div>`
+    ).join('');
+
+    function groupByCat(list) {
+      const g={};
+      list.forEach(t=>{if(!g[t.category])g[t.category]=[];g[t.category].push(t);});
+      return g;
+    }
+
+    function renderSection(list, label, cls) {
+      if (!list.length) return '';
+      const groups = groupByCat(list);
+      const html = Object.entries(groups).map(([cat, items]) => {
+        const taskHTML = items.map(t => {
+          const p=parseInt(t.progress)||0;
+          const progCls=p>=100?'p100':p>=50?'p50':'';
+          const od=isOverdue(t);
+          return `<div class="pptx-task-item">
+            <div class="task-name">
+              ${od?'<span style="color:var(--accent);">⚠️기한초과</span> ':''}${escHtml(t.name)}
+              <span class="task-prog ${progCls}">${p}%</span>
+              ${statusBadge(t.status)}
+            </div>
+            ${t.desc?`<div class="task-desc">${escHtml(t.desc)}</div>`:''}
+            ${t.note?`<div class="task-note">💬 ${escHtml(t.note)}</div>`:''}
+          </div>`;
+        }).join('');
+        return `<div class="pptx-cat-group">
+          <div class="pptx-cat-label"><span>[${escHtml(cat)}]</span></div>${taskHTML}
+        </div>`;
+      }).join('');
+      return `<div class="pptx-section">
+        <div class="pptx-section-label ${cls}">[${label}]</div>${html}
+      </div>`;
+    }
+
+    function renderIkmol(list) {
+      if (!list.length) return '';
+      const groups=groupByCat(list);
+      const html=Object.entries(groups).map(([cat,items])=>{
+        const taskHTML=items.map(t=>`<div class="pptx-task-item">
+          <div class="task-name">${escHtml(t.name)}${t.due?` <span style="font-size:11px;color:var(--text-muted);">(~${fmt(t.due)})</span>`:''}</div>
+          ${t.desc?`<div class="task-desc">${escHtml(t.desc)}</div>`:''}
+        </div>`).join('');
+        return `<div class="pptx-cat-group"><div class="pptx-cat-label"><span>[${escHtml(cat)}]</span></div>${taskHTML}</div>`;
+      }).join('');
+      return `<div class="pptx-section"><div class="pptx-section-label ikmol">익월 업무 계획</div>${html}</div>`;
+    }
+
+    const mRate = monthTasks.length ? Math.round(monthTasks.filter(t=>t.status==='처리완료').length/monthTasks.length*100) : 0;
+    const mPrev = calcMonthRate([m], prevMonth);
+    const noData = jungjeom.length===0&&ilsang.length===0&&ikmol.length===0;
+
+    reportHTML += `<div class="pptx-member-block">
+      <div class="pptx-member-header">
+        업무보고 _ ${escHtml(m)}
+        <span style="float:right;font-size:13px;font-weight:400;opacity:.85;">
+          완료율 ${mRate}% ${trendBadge(mRate,mPrev)}
+        </span>
+      </div>
+      <div class="pptx-member-body">
+        ${noData
+          ? '<div class="empty-state"><div class="icon">📭</div><p>해당 월에 등록된 업무가 없습니다.</p></div>'
+          : renderSection(jungjeom,'중점','jungjeom') +
+            renderSection(ilsang,'일상','ilsang') +
+            renderIkmol(ikmol)
+        }
+        ${comments ? `<div style="margin-top:16px;"><div style="font-size:12px;font-weight:700;color:var(--primary);margin-bottom:8px;">📝 이달의 코멘트</div>${comments}</div>` : ''}
+      </div>
+    </div>`;
+  });
+
+  // 커버 페이지 (인쇄 시 첫 장) — 항목 12
+  const coverPage = `
+    <div class="cover-page">
+      <h1>${cfg.orgName || '경영기획팀'}</h1>
+      <div class="cover-sub">${titleDate}</div>
+      <div class="cover-meta">
+        보고 기간: ${selY}년 ${parseInt(selM)}월<br>
+        보고일: ${today().replace(/-/g,'년 ').replace(/-/,'월 ')}일<br>
+        작성: ${session.name}
+      </div>
+    </div>`;
+
+  const memberSel = session.role==='leader' ? `
+    <select id="mr-member" onchange="mrFilters.member=this.value;renderMonthlyReport($('content'))">
+      <option value="all"${mrFilters.member==='all'?' selected':''}>전체 팀원</option>
+      ${members.map(m=>`<option value="${m}"${mrFilters.member===m?' selected':''}>${escHtml(m)}</option>`).join('')}
+    </select>` : '';
+
+  cont.innerHTML = `
+    ${coverPage}
+    <div class="report-wrap pptx-report">
+      <div class="report-header">
+        <div class="report-title">${titleDate}</div>
+        <div class="report-meta">경영기획팀 월간업무보고</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
+        <label style="font-weight:600;color:var(--primary);">보고 연월</label>
+        <input type="month" id="mr-month" value="${mrMonth}" onchange="mrMonth=this.value;renderMonthlyReport($('content'))">
+        ${memberSel}
+        <div style="flex:1;"></div>
+        <button class="btn btn-outline btn-sm" onclick="window.print()">🖨️ 인쇄</button>
+        <button class="btn btn-ghost btn-sm" onclick="exportCSV()">📊 CSV</button>
+      </div>
+      ${ikmolWarn}
+      ${execSummary}
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:20px;background:#EBF4FF;padding:10px 14px;border-radius:6px;">
+        <span style="background:#FED7D7;padding:2px 6px;border-radius:3px;margin-right:6px;">중점</span>
+        <span style="background:#BEE3F8;padding:2px 6px;border-radius:3px;margin-right:6px;">일상</span>
+        <span style="background:#FEEBC8;padding:2px 6px;border-radius:3px;margin-right:6px;">익월</span>
+        진행률 100%=완료 · 50%이상=진행중 · 기한초과=⚠️
+      </div>
+      ${reportHTML}
+    </div>`;
+};
+
+// ===================== PHASE 3 ADDITIONS =====================
+
+// ── [23] 우선순위 자동 계산 ──
+const PRIORITY_MAP = {
+  high:   { high:'A', medium:'B', low:'C' },
+  medium: { high:'B', medium:'B', low:'D' },
+  low:    { high:'B', medium:'D', low:'D' }
+};
+const PRIORITY_STYLE = {
+  A:{ bg:'#FED7D7', color:'#C53030', label:'A — 긴급·중요 (즉시처리)' },
+  B:{ bg:'#FEEBC8', color:'#C05621', label:'B — 중요 (계획 처리)' },
+  C:{ bg:'#BEE3F8', color:'#2C5282', label:'C — 긴급 (빠른 처리)' },
+  D:{ bg:'#E2E8F0', color:'#4A5568', label:'D — 일반' }
+};
+
+window.calcNewPriority = function() {
+  const urg = ($('new-urgency')||{}).value || 'low';
+  const imp = ($('new-importance')||{}).value || 'low';
+  const p = PRIORITY_MAP[urg][imp];
+  const inp = $('new-priority'); if (inp) inp.value = p;
+  const disp = $('new-priority-display');
+  if (disp) {
+    const s = PRIORITY_STYLE[p];
+    disp.style.background = s.bg; disp.style.color = s.color;
+    disp.textContent = `자동 계산: P${p} — ${s.label}`;
+  }
+};
+
+window.calcEditPriority = function() {
+  const urg = ($('edit-urgency')||{}).value || 'low';
+  const imp = ($('edit-importance')||{}).value || 'low';
+  const p = PRIORITY_MAP[urg][imp];
+  const inp = $('edit-priority'); if (inp) inp.value = p;
+  const disp = $('edit-priority-display');
+  if (disp) {
+    const s = PRIORITY_STYLE[p];
+    disp.style.background = s.bg; disp.style.color = s.color;
+    disp.textContent = `자동 계산: P${p} — ${s.label}`;
+  }
+};
+
+// urgency/importance → priority 역산 (기존 데이터 openEdit 시)
+function priorityToUrgImp(p) {
+  const map = { A:['high','high'], B:['low','high'], C:['high','low'], D:['low','low'] };
+  return map[p] || ['low','low'];
+}
+
+// openEdit 재정의: urgency/importance + adminComment + confirmed 로드
+const _p2OpenEdit = window.openEdit;
+window.openEdit = function(id) {
+  _p2OpenEdit(id);
+  const t = tasks.find(x => x.id === id);
+  if (!t) return;
+
+  // 긴급도·중요도 역산
+  const [urg, imp] = priorityToUrgImp(t.priority || 'D');
+  const eu = $('edit-urgency'); if (eu) eu.value = t.urgency || urg;
+  const ei = $('edit-importance'); if (ei) ei.value = t.importance || imp;
+  calcEditPriority();
+
+  // 총괄 전용 섹션
+  const leaderSec = $('leader-edit-section');
+  if (leaderSec) {
+    leaderSec.classList.toggle('hidden', session.role !== 'leader');
+    const ec = $('edit-confirmed'); if (ec) ec.checked = !!t.confirmedBy;
+    const ea = $('edit-admin-comment'); if (ea) ea.value = t.adminComment || '';
+  }
+};
+
+// saveEdit 재정의: urgency/importance/confirmed/adminComment 저장
+window.saveEdit = async function() {
+  const id = $('edit-task-id').value;
+  let progress = parseInt($('edit-progress').value) || 0;
+  let status = $('edit-status').value;
+  if (status === '처리완료') progress = 100;
+  if (progress === 100 && status === '진행중') status = '처리완료';
+
+  const urgency = ($('edit-urgency')||{}).value || 'low';
+  const importance = ($('edit-importance')||{}).value || 'low';
+  const priority = ($('edit-priority')||{}).value || 'D';
+
+  const confirmed = $('edit-confirmed')?.checked;
+  const existing = tasks.find(t => t.id === id) || {};
+  const confirmedBy = confirmed ? (existing.confirmedBy || session.name) : null;
+  const confirmedAt = confirmed ? (existing.confirmedAt || new Date().toISOString()) : null;
+
+  await upd(id, {
+    name: $('edit-name').value.trim(),
+    category: $('edit-category').value,
+    desc: $('edit-desc').value.trim(),
+    taskType: $('edit-type').value,
+    progress, priority, urgency, importance,
+    due: $('edit-due').value, status,
+    note: $('edit-note').value.trim(),
+    monthComment: ($('edit-month-comment')||{}).value?.trim() || '',
+    confirmedBy, confirmedAt,
+    adminComment: ($('edit-admin-comment')||{}).value?.trim() || ''
+  });
+  closeModal('edit-modal');
+  showToast('수정되었습니다.', 'success');
+};
+
+// addTask 재정의: urgency/importance 포함
+window.addTask = async function() {
+  const name = $('new-name').value.trim();
+  if (!name) { alert('업무명을 입력하세요.'); return; }
+  let status = $('new-status').value;
+  let progress = parseInt($('new-progress').value) || 0;
+  if (status === '처리완료') progress = 100;
+  const urgency = ($('new-urgency')||{}).value || 'low';
+  const importance = ($('new-importance')||{}).value || 'low';
+  const priority = ($('new-priority')||{}).value || 'D';
+  const task = {
+    id: uid(), member: session.name, date: today(), name,
+    category: $('new-category').value,
+    desc: $('new-desc').value.trim(),
+    taskType: $('new-type').value,
+    progress, priority, urgency, importance,
+    due: $('new-due').value, status,
+    note: $('new-note').value.trim(),
+    monthComment: ($('new-month-comment')||{}).value?.trim() || '',
+    recurrence: ($('new-recurrence')||{}).value || 'none',
+    createdAt: Date.now()
+  };
+  if (cfg.storage === 'firebase' && _fbRefs) {
+    try { await _fbRefs.setDoc(_fbRefs.doc(_fbRefs.colRef, task.id), task); }
+    catch(e) { tasks.push(task); saveLocal(); renderCurrentTab(); }
+  } else { tasks.push(task); saveLocal(); renderCurrentTab(); }
+  ['new-name','new-desc','new-note'].forEach(id => { const el=$(id); if(el) el.value=''; });
+  const nm=$('new-month-comment'); if(nm) nm.value='';
+  const nr=$('new-recurrence'); if(nr) nr.value='none';
+  const nd=$('new-due'); if(nd) nd.value='';
+  const ns=$('new-status'); if(ns) ns.value='진행중';
+  setNewProg(0);
+  showToast('업무가 등록되었습니다.', 'success');
+};
+
+// ── [19] 총괄 확인 토글 ──
+window.toggleConfirm = async function(id) {
+  const t = tasks.find(x => x.id === id);
+  if (!t) return;
+  const isConfirmed = !!t.confirmedBy;
+  await upd(id, {
+    confirmedBy: isConfirmed ? null : session.name,
+    confirmedAt: isConfirmed ? null : new Date().toISOString()
+  });
+  showToast(isConfirmed ? '확인 취소되었습니다.' : '업무 확인 완료 표시되었습니다.', 'success');
+};
+
+// ── [22] 업무 복사 ──
+window.copyTask = function(id) {
+  const t = tasks.find(x => x.id === id);
+  if (!t) return;
+  // 등록 폼이 접혀있으면 펼치기
+  const body = $('add-form-body');
+  if (body && body.style.display === 'none') toggleAddForm();
+  // 폼에 값 채우기
+  const fn = $('new-name'); if (fn) fn.value = t.name + ' (복사)';
+  const fc = $('new-category'); if (fc) fc.value = t.category || '회계';
+  const ft = $('new-type'); if (ft) ft.value = t.taskType || '일상';
+  const fd = $('new-desc'); if (fd) fd.value = t.desc || '';
+  const fdu = $('new-due'); if (fdu) fdu.value = '';
+  const fn2 = $('new-note'); if (fn2) fn2.value = t.note || '';
+  const fu = $('new-urgency'); if (fu) fu.value = t.urgency || 'low';
+  const fi = $('new-importance'); if (fi) fi.value = t.importance || 'low';
+  calcNewPriority();
+  setNewProg(t.progress || 0);
+  // 스크롤 이동
+  const addForm = $('add-form');
+  if (addForm) addForm.scrollIntoView({ behavior:'smooth', block:'start' });
+  showToast(`'${t.name}' 복사됨 — 내용을 수정 후 등록하세요.`, 'info');
+};
+
+// ── [21] 템플릿 ──
+function getTemplates() {
+  try { return JSON.parse(localStorage.getItem('wrs_templates') || '[]'); } catch(e) { return []; }
+}
+function saveTemplates(list) {
+  localStorage.setItem('wrs_templates', JSON.stringify(list));
+}
+
+window.saveAsTemplate = function() {
+  const name = $('new-name')?.value.trim();
+  if (!name) { showToast('업무명을 입력한 후 저장하세요.', 'warning'); return; }
+  const tpl = {
+    id: uid(),
+    name,
+    category: $('new-category')?.value || '회계',
+    taskType: $('new-type')?.value || '일상',
+    desc: $('new-desc')?.value.trim() || '',
+    urgency: $('new-urgency')?.value || 'low',
+    importance: $('new-importance')?.value || 'low',
+    priority: $('new-priority')?.value || 'D',
+    note: $('new-note')?.value.trim() || '',
+    savedAt: new Date().toISOString()
+  };
+  const list = getTemplates();
+  list.unshift(tpl);
+  saveTemplates(list.slice(0, 20)); // 최대 20개
+  showToast(`템플릿 '${name}' 저장됨`, 'success');
+};
+
+window.openTemplateModal = function() {
+  const list = getTemplates();
+  const tplList = $('template-list');
+  if (!tplList) return;
+  if (list.length === 0) {
+    tplList.innerHTML = `<div class="empty-state"><div class="icon">📋</div><p>저장된 템플릿이 없습니다.<br>업무 등록 폼에서 "💾 템플릿으로 저장"을 클릭하세요.</p></div>`;
+  } else {
+    tplList.innerHTML = list.map(tpl => `
+      <div class="template-item">
+        <div>
+          <div class="ti-name">${escHtml(tpl.name)}</div>
+          <div class="ti-meta">${escHtml(tpl.category)} · ${escHtml(tpl.taskType)} · P${tpl.priority}</div>
+        </div>
+        <div style="display:flex;gap:6px;">
+          <button class="btn btn-primary btn-sm" onclick="loadTemplate('${tpl.id}')">불러오기</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteTemplate('${tpl.id}')">삭제</button>
+        </div>
+      </div>`).join('');
+  }
+  $('template-modal').classList.remove('hidden');
+};
+
+window.loadTemplate = function(tplId) {
+  const tpl = getTemplates().find(t => t.id === tplId);
+  if (!tpl) return;
+  const fn = $('new-name'); if (fn) fn.value = tpl.name;
+  const fc = $('new-category'); if (fc) fc.value = tpl.category;
+  const ft = $('new-type'); if (ft) ft.value = tpl.taskType;
+  const fd = $('new-desc'); if (fd) fd.value = tpl.desc || '';
+  const fn2 = $('new-note'); if (fn2) fn2.value = tpl.note || '';
+  const fu = $('new-urgency'); if (fu) fu.value = tpl.urgency || 'low';
+  const fi = $('new-importance'); if (fi) fi.value = tpl.importance || 'low';
+  calcNewPriority();
+  closeModal('template-modal');
+  const body = $('add-form-body');
+  if (body && body.style.display === 'none') toggleAddForm();
+  const addForm = $('add-form');
+  if (addForm) addForm.scrollIntoView({ behavior:'smooth', block:'start' });
+  showToast(`템플릿 '${tpl.name}' 불러오기 완료`, 'success');
+};
+
+window.deleteTemplate = function(tplId) {
+  if (!confirm('이 템플릿을 삭제하시겠습니까?')) return;
+  const list = getTemplates().filter(t => t.id !== tplId);
+  saveTemplates(list);
+  openTemplateModal();
+  showToast('템플릿이 삭제되었습니다.', 'info');
+};
+
+// ── [26] 맥락 인식 경고 ──
+window.checkContextWarnings = function() {
+  const area = $('ctx-warning-area'); if (!area) return;
+  const warnings = [];
+  const myTasks = tasks.filter(t => t.member === session.name);
+  const type = $('new-type')?.value;
+  const urg = $('new-urgency')?.value;
+  const imp = $('new-importance')?.value;
+
+  if (type === '중점') {
+    const jungjeomCount = myTasks.filter(t => t.taskType === '중점' && t.status !== '처리완료').length;
+    if (jungjeomCount >= 5) warnings.push(`현재 미완료 중점업무가 <strong>${jungjeomCount}건</strong>입니다. 중점업무가 많으면 집중도가 떨어집니다. 꼭 필요한 경우에만 중점으로 분류하세요.`);
+  }
+  if (urg === 'high' && imp === 'high') {
+    const aTasks = myTasks.filter(t => t.priority === 'A' && t.status !== '처리완료').length;
+    if (aTasks >= 3) warnings.push(`A 우선순위 미완료 업무가 <strong>${aTasks}건</strong>입니다. A 우선순위가 너무 많으면 실질적 우선순위 관리가 어렵습니다.`);
+  }
+  // [Phase7][2] 중복 등록 경고
+  const nm = ($('new-name')?.value || '').trim().toLowerCase();
+  if (nm.length >= 2) {
+    const dup = myTasks.find(t => (t.name||'').trim().toLowerCase() === nm && t.status !== '처리완료');
+    if (dup) warnings.push(`동일한 이름의 진행 중 업무가 이미 있습니다 (등록일 ${fmt(dup.date)}). 중복 등록이 아닌지 확인하세요.`);
+  }
+  area.innerHTML = warnings.map(w =>
+    `<div class="ctx-warning"><span class="cw-icon">⚡</span><span>${w}</span></div>`
+  ).join('');
+};
+
+// ── [25] 빈 상태 온보딩 강화 (renderMy 내 이미 반영) ──
+
+// ===================== PHASE 4 ADDITIONS =====================
+
+let READONLY = false;        // [30] 읽기 전용 모드
+let execTeams = [];          // [29] 임원 다중팀 데이터
+
+// ── [27] 브랜딩 적용 ──
+function applyBranding() {
+  const org = cfg.orgName || '경영기획팀';
+  const titleEl = $('app-title');
+  if (titleEl) titleEl.innerHTML = `📊 업무ON <span style="font-weight:400;font-size:13px;opacity:.75;">| ${escHtml(org)}</span>`;
+}
+
+// ── [28] 역할 전환 (임원 추가) ──
+window.onRoleChange = function() {
+  const role = document.querySelector('input[name=role]:checked')?.value;
+  $('member-select-area').classList.toggle('hidden', role !== 'member');
+  $('leader-pass-area').classList.toggle('hidden', role !== 'leader');
+  const execArea = $('exec-area');
+  if (execArea) execArea.classList.toggle('hidden', role !== 'exec');
+};
+
+// ── [28] 로그인 (임원 처리) ──
+window.doLogin = function() {
+  const role = document.querySelector('input[name=role]:checked')?.value || 'member';
+  if (role === 'leader') {
+    if (cfg.leaderPass && $('login-pass').value !== cfg.leaderPass) {
+      alert('비밀번호가 틀렸습니다.'); return;
+    }
+    session = { role:'leader', name: cfg.leader };
+  } else if (role === 'exec') {
+    session = { role:'exec', name: '임원' };
+  } else {
+    const sel = document.querySelector('#member-chips .chip.selected');
+    if (!sel) { alert('팀원을 선택하세요.'); return; }
+    session = { role:'member', name: sel.textContent };
+  }
+  sessionStorage.setItem('wrs_session', JSON.stringify(session));
+  $('login-modal').classList.add('hidden');
+  afterLogin();
+};
+
+// ── [30] 읽기 전용 링크 생성 ──
+window.genReadOnlyLink = function() {
+  const payload = {
+    org: cfg.orgName || '경영기획팀',
+    members: cfg.members || [],
+    leader: cfg.leader || '',
+    tasks: tasks.filter(t => !t.isArchived),
+    ts: Date.now()
+  };
+  let encoded;
+  try {
+    encoded = encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(payload)))));
+  } catch(e) { showToast('링크 생성 실패: ' + e.message, 'error'); return; }
+  const url = location.href.split('#')[0] + '#view=' + encoded;
+  const input = $('readonly-url-input');
+  if (input) input.value = url;
+  if (url.length > 30000) {
+    showToast('데이터가 많아 링크가 깁니다. JSON 백업 공유를 권장합니다.', 'warning');
+  }
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(url).then(() => showToast('읽기전용 링크가 복사되었습니다!', 'success')).catch(()=>{});
+  }
+};
+
+function loadReadOnlyFromHash() {
+  const m = location.hash.match(/view=([^&]+)/);
+  if (!m) return false;
+  try {
+    const data = JSON.parse(decodeURIComponent(escape(atob(decodeURIComponent(m[1])))));
+    cfg = { storage:'local', orgName:data.org, members:data.members||[], leader:data.leader||'', leaderPass:'', firebase:{} };
+    tasks = data.tasks || [];
+    session = { role:'leader', name: '열람자' };
+    READONLY = true;
+    return true;
+  } catch(e) { console.warn('read-only parse error', e); return false; }
+}
+
+// ── [32] 변경 이력 로그 (upd 래핑) ──
+const _baseUpd = window.upd;
+window.upd = async function(id, fields) {
+  const idx = tasks.findIndex(t => t.id === id);
+  if (idx >= 0) {
+    const prev = tasks[idx];
+    const logs = [];
+    if (fields.status !== undefined && fields.status !== prev.status)
+      logs.push(`상태: ${prev.status||'-'} → ${fields.status}`);
+    if (fields.progress !== undefined && fields.progress !== prev.progress)
+      logs.push(`진행률: ${prev.progress||0}% → ${fields.progress}%`);
+    if (logs.length) {
+      const history = Array.isArray(prev.history) ? [...prev.history] : [];
+      history.push({ at: new Date().toISOString(), by: session.name, change: logs.join(', ') });
+      fields = { ...fields, history };
+    }
+  }
+  return _baseUpd(id, fields);
+};
+
+// ── [31] 데이터 아카이브 ──
+window.archiveOldTasks = function() {
+  const cutoff = (() => {
+    const d = new Date(); d.setMonth(d.getMonth() - 3);
+    return d.toISOString().slice(0,10);
+  })();
+  const targets = tasks.filter(t => !t.isArchived && t.status === '처리완료' && (t.date||'') < cutoff);
+  if (targets.length === 0) { showToast('아카이브할 업무가 없습니다. (3개월 이전 완료 업무 대상)', 'info'); return; }
+  if (!confirm(`3개월 이전 완료 업무 ${targets.length}건을 아카이브합니다.\n(목록에서 숨겨지며, 백업·복원은 유지됩니다)`)) return;
+  targets.forEach(t => { t.isArchived = true; });
+  saveLocal();
+  renderCurrentTab();
+  showToast(`${targets.length}건 아카이브 완료`, 'success');
+};
+
+window.toggleArchiveView = function() {
+  window._showArchived = !window._showArchived;
+  renderCurrentTab();
+  showToast(window._showArchived ? '아카이브 포함 표시' : '아카이브 숨김', 'info');
+};
+
+// 활성 업무만 필터 (아카이브 제외) — 렌더 함수에서 사용
+function activeTasks() {
+  return window._showArchived ? tasks : tasks.filter(t => !t.isArchived);
+}
+
+// ── [33] AI 보고 문장 자동 완성 (API 키 선택) ──
+window.aiExpandText = async function(taskId) {
+  const key = localStorage.getItem('wrs_ai_key');
+  if (!key) {
+    const input = prompt('AI 기능을 사용하려면 Claude API 키를 입력하세요.\n(localStorage에 저장되며, 입력 데이터만 전송됩니다)');
+    if (!input) return;
+    localStorage.setItem('wrs_ai_key', input.trim());
+  }
+  const t = tasks.find(x => x.id === taskId);
+  if (!t) return;
+  showToast('AI 문장 생성 중...', 'info');
+  try {
+    const apiKey = localStorage.getItem('wrs_ai_key');
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{
+        'content-type':'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access':'true'
+      },
+      body: JSON.stringify({
+        model:'claude-3-5-haiku-latest',
+        max_tokens:200,
+        messages:[{ role:'user', content:`다음 업무 메모를 임원 보고서용 한 문장으로 정중하고 구체적으로 확장해줘. 메모: "${t.name}${t.desc?' / '+t.desc:''}". 한 문장만 출력.` }]
+      })
+    });
+    const data = await resp.json();
+    const text = data?.content?.[0]?.text?.trim();
+    if (text) {
+      await upd(taskId, { desc: text });
+      showToast('AI 문장이 진행내용에 반영되었습니다.', 'success');
+    } else {
+      showToast('AI 응답 오류: ' + (data?.error?.message || '알 수 없음'), 'error');
+    }
+  } catch(e) { showToast('AI 호출 실패: ' + e.message, 'error'); }
+};
+
+// ── [34] 반복 업무 자동 생성 ──
+function generateRecurringTasks() {
+  const recs = tasks.filter(t => t.recurrence && t.recurrence !== 'none' && t.member === session.name);
+  const curMonth = getCurrentMonth();
+  let created = 0;
+  recs.forEach(t => {
+    const lastGen = t.lastRecurGen || (t.date||'').slice(0,7);
+    if (t.recurrence === 'monthly' && lastGen < curMonth) {
+      const exists = tasks.some(x => x.recurParent === t.id && (x.date||'').startsWith(curMonth));
+      if (!exists) {
+        tasks.push({
+          id: uid(), member: session.name, date: today(), name: t.name,
+          category: t.category, desc: t.desc, taskType: t.taskType,
+          progress: 0, priority: t.priority, urgency: t.urgency, importance: t.importance,
+          due: '', status: '진행중', note: t.note, monthComment:'',
+          recurParent: t.id, createdAt: Date.now()
+        });
+        t.lastRecurGen = curMonth;
+        created++;
+      }
+    }
+  });
+  if (created > 0) { saveLocal(); showToast(`반복 업무 ${created}건이 자동 생성되었습니다.`, 'info'); }
+}
+
+// ── [35] 온보딩 투어 ──
+const TOUR_STEPS = [
+  { ic:'📝', t:'1. 업무를 등록하세요', d:'상단 "업무 등록" 폼에서 업무명·분야·긴급도·중요도만 입력하면 끝. 우선순위는 자동 계산됩니다.' },
+  { ic:'📊', t:'2. 진행률을 관리하세요', d:'0/25/50/75/100% 버튼으로 빠르게 업데이트. 100%로 바꾸면 자동으로 완료 처리됩니다.' },
+  { ic:'📑', t:'3. 보고서는 자동입니다', d:'"주간보고"·"월간보고" 탭에서 별도 작성 없이 보고서가 자동 생성됩니다. 인쇄·CSV도 한 번에.' },
+  { ic:'🔗', t:'4. 팀과 공유하세요', d:'공유폴더 연결 후 [전송]·[동기화]로 팀 업무를 모읍니다. 임원에게는 읽기전용 링크를 전달하세요.' }
+];
+let _tourIdx = 0;
+window.startTour = function() {
+  _tourIdx = 0;
+  renderTour();
+};
+function renderTour() {
+  let ov = $('tour-overlay-el');
+  if (!ov) {
+    ov = document.createElement('div');
+    ov.id = 'tour-overlay-el'; ov.className = 'tour-overlay';
+    document.body.appendChild(ov);
+  }
+  const s = TOUR_STEPS[_tourIdx];
+  const isLast = _tourIdx === TOUR_STEPS.length - 1;
+  ov.innerHTML = `<div class="tour-card">
+    <div class="tour-ic">${s.ic}</div>
+    <h3>${s.t}</h3>
+    <p>${s.d}</p>
+    <div class="tour-dots">${TOUR_STEPS.map((_,i)=>`<div class="d ${i===_tourIdx?'active':''}"></div>`).join('')}</div>
+    <div class="tour-btns">
+      <button class="btn btn-ghost" onclick="endTour()">건너뛰기</button>
+      <button class="btn btn-primary" onclick="tourNext()">${isLast?'시작하기 🚀':'다음 →'}</button>
+    </div>
+  </div>`;
+}
+window.tourNext = function() {
+  if (_tourIdx < TOUR_STEPS.length - 1) { _tourIdx++; renderTour(); }
+  else endTour();
+};
+window.endTour = function() {
+  const ov = $('tour-overlay-el');
+  if (ov) ov.remove();
+  localStorage.setItem('wrs_tour_done', '1');
+};
+
+// ── [36] 브라우저 호환성 안내 ──
+function checkBrowserCompat() {
+  if (READONLY) return;
+  const warnings = [];
+  if (location.protocol === 'file:') {
+    warnings.push('⚠️ 파일을 직접 열면 공유폴더 기능이 작동하지 않습니다. GitHub Pages·사내 웹서버 등 https 환경에서 사용하세요.');
+  }
+  if (!window.showDirectoryPicker && cfg.storage === 'folder') {
+    warnings.push('⚠️ 이 브라우저는 공유폴더 기능을 지원하지 않습니다. Chrome·Edge 사용을 권장합니다.');
+  }
+  if (warnings.length) {
+    const tabsEl = $('tabs');
+    if (tabsEl && !$('compat-banner-el')) {
+      const div = document.createElement('div');
+      div.id = 'compat-banner-el'; div.className = 'compat-banner';
+      div.innerHTML = `<span>${warnings.join(' ')}</span><button class="btn btn-sm btn-ghost" style="margin-left:auto;" onclick="this.parentElement.remove()">✕</button>`;
+      tabsEl.parentNode.insertBefore(div, tabsEl.nextSibling);
+    }
+  }
+}
+
+// ── [29] 임원 다중팀 데이터 로드 ──
+window.execLoadTeamFiles = function() {
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = '.json'; inp.multiple = true;
+  inp.onchange = e => {
+    const files = Array.from(e.target.files);
+    let loaded = 0;
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = ev => {
+        try {
+          const data = JSON.parse(ev.target.result);
+          const teamTasks = data.tasks || [];
+          const teamName = data.org || file.name.replace(/\.json$/,'').replace(/_backup.*/,'').replace(/workcheck_backup_?/,'') || file.name;
+          const existing = execTeams.findIndex(t => t.team === teamName);
+          const entry = { team: teamName, tasks: teamTasks };
+          if (existing >= 0) execTeams[existing] = entry; else execTeams.push(entry);
+          loaded++;
+          if (loaded === files.length) { renderExec($('content')); showToast(`${loaded}개 팀 데이터 로드 완료`, 'success'); }
+        } catch(err) { showToast(`${file.name} 읽기 실패`, 'error'); }
+      };
+      reader.readAsText(file);
+    });
+  };
+  inp.click();
+};
+
+window.renderExec = function(cont) {
+  const curMonth = getCurrentMonth();
+  if (execTeams.length === 0) {
+    cont.innerHTML = `
+      <div class="exec-summary">
+        <h2>🏢 임원 종합 대시보드</h2>
+        <div class="sub">여러 팀의 업무 현황을 통합 조회합니다.</div>
+      </div>
+      <div class="exec-load-zone">
+        <div style="font-size:36px;margin-bottom:10px;">📂</div>
+        <p>각 팀에서 내려받은 <strong>백업(JSON)</strong> 파일을 불러오세요.</p>
+        <button class="btn btn-primary" style="margin-top:12px;" onclick="execLoadTeamFiles()">📂 팀 데이터 불러오기</button>
+      </div>`;
+    return;
+  }
+
+  // 통합 집계
+  let grandTotal=0, grandDone=0, grandOverdue=0;
+  const teamCards = execTeams.map(tm => {
+    const mt = tm.tasks.filter(t => (t.date||'').startsWith(curMonth));
+    const total = mt.length;
+    const done = mt.filter(t=>t.status==='처리완료').length;
+    const overdue = mt.filter(t => t.due && t.status!=='처리완료' && t.due < today()).length;
+    const rate = total ? Math.round(done/total*100) : 0;
+    grandTotal += total; grandDone += done; grandOverdue += overdue;
+    const rateColor = rate>=80?'#38A169':rate>=60?'#D69E2E':'#E53E3E';
+    return `<div class="exec-team-card">
+      <h3>${escHtml(tm.team)} <span class="et-rate" style="color:${rateColor};">${rate}%</span></h3>
+      <div class="mc-stats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+        <div class="mc-stat" style="text-align:center;"><div class="n" style="font-size:20px;font-weight:700;color:var(--primary);">${total}</div><div class="l" style="font-size:11px;color:var(--text-muted);">전체</div></div>
+        <div class="mc-stat" style="text-align:center;"><div class="n" style="font-size:20px;font-weight:700;color:var(--success);">${done}</div><div class="l" style="font-size:11px;color:var(--text-muted);">완료</div></div>
+        <div class="mc-stat" style="text-align:center;"><div class="n" style="font-size:20px;font-weight:700;color:var(--accent);">${overdue}</div><div class="l" style="font-size:11px;color:var(--text-muted);">초과</div></div>
+      </div>
+      <div class="prog-wrap" style="margin-top:10px;"><div class="prog-fill ${rate>=100?'done':''}" style="width:${rate}%"></div></div>
+    </div>`;
+  }).join('');
+
+  const grandRate = grandTotal ? Math.round(grandDone/grandTotal*100) : 0;
+
+  cont.innerHTML = `
+    <div class="exec-summary">
+      <h2>🏢 임원 종합 대시보드</h2>
+      <div class="sub">${curMonth.replace('-','년 ')}월 · ${execTeams.length}개 팀 통합</div>
+      <div class="exec-kpi">
+        <div class="exec-kpi-item"><div class="kv">${execTeams.length}</div><div class="kl">조회 팀</div></div>
+        <div class="exec-kpi-item"><div class="kv">${grandTotal}</div><div class="kl">전체 업무</div></div>
+        <div class="exec-kpi-item"><div class="kv">${grandRate}%</div><div class="kl">전사 완료율</div></div>
+        <div class="exec-kpi-item"><div class="kv" style="color:#FC8181;">${grandOverdue}</div><div class="kl">기한초과</div></div>
+        <div class="exec-kpi-item"><div class="kv" style="color:#68D391;">${grandDone}</div><div class="kl">완료건수</div></div>
+      </div>
+    </div>
+    <div class="section-header-row">
+      <h2>팀별 현황</h2>
+      <button class="btn btn-outline btn-sm" onclick="execLoadTeamFiles()">📂 팀 데이터 추가/갱신</button>
+    </div>
+    <div class="exec-team-grid">${teamCards}</div>`;
+};
+
+// ── 임원 탭/렌더 통합 ──
+const _p3BuildTabs = window.buildTabs;
+window.buildTabs = function() {
+  if (session.role === 'exec') {
+    const tabsEl = $('tabs');
+    tabsEl.innerHTML = '';
+    ['🏢 임원 종합'].forEach((label,i)=>{
+      const btn = document.createElement('button');
+      btn.className = 'tab-btn active';
+      btn.textContent = label;
+      btn.onclick = () => showTab(i);
+      tabsEl.appendChild(btn);
+    });
+    return;
+  }
+  _p3BuildTabs();
+};
+
+const _p3RenderCurrentTab = window.renderCurrentTab;
+window.renderCurrentTab = function() {
+  const cont = $('content');
+  if (!cont || !session.role) return;
+  if (session.role === 'exec') { renderExec(cont); return; }
+  _p3RenderCurrentTab();
+  // 읽기전용 배너
+  if (READONLY && cont && !cont.querySelector('.ro-banner')) {
+    const b = document.createElement('div');
+    b.className = 'ro-banner';
+    b.innerHTML = '👁️ <strong>읽기 전용 모드</strong> — 이 화면은 열람용이며 수정할 수 없습니다.';
+    cont.insertBefore(b, cont.firstChild);
+  }
+};
+
+// ── afterLogin 확장 (브랜딩·반복·투어·호환성) ──
+const _p3AfterLogin = window.afterLogin;
+window.afterLogin = async function() {
+  applyBranding();
+  await _p3AfterLogin();
+  if (session.role === 'member') generateRecurringTasks();
+  checkBrowserCompat();
+  // 사용자 역할 표시 보정
+  const labelMap = { leader:'팀장(총괄)', exec:'임원', member:'팀원' };
+  $('user-info').textContent = `👤 ${session.name} (${labelMap[session.role]||'팀원'})`;
+  // 최초 1회 온보딩 투어
+  if (!READONLY && session.role === 'member' && !localStorage.getItem('wrs_tour_done')) {
+    setTimeout(startTour, 600);
+  }
+};
+
+// ── showLogin 확장 (브랜딩) ──
+const _p3ShowLogin = window.showLogin;
+window.showLogin = function() {
+  _p3ShowLogin();
+  const sub = $('login-subtitle');
+  if (sub) sub.textContent = `업무ON · ${cfg.orgName||'경영기획팀'} | 팀장: ${cfg.leader} | 팀원: ${(cfg.members||[]).join(', ')}`;
+};
+
+// ── init 확장 (읽기전용 모드 + 브랜딩) ──
+window.init = function() {
+  if (loadReadOnlyFromHash()) {
+    document.body.classList.add('readonly');
+    applyBranding();
+    $('setup-modal')?.classList.add('hidden');
+    $('login-modal')?.classList.add('hidden');
+    $('app').classList.remove('hidden');
+    buildTabs();
+    showTab(0);
+    return;
+  }
+  loadConfigFromHash();
+  const saved = localStorage.getItem('wrs_cfg');
+  if (saved) { try { cfg = JSON.parse(saved); } catch(e){} }
+  applyBranding();
+  const sess = sessionStorage.getItem('wrs_session');
+  if (sess) {
+    try {
+      session = JSON.parse(sess);
+      if (session.role && session.name) { afterLogin(); return; }
+    } catch(e){}
+  }
+  if (cfg.leader && cfg.members && cfg.members.length > 0) showLogin();
+  else showSetup();
+};
+
+// ── 데이터 관리 영역에 아카이브·투어 버튼 추가 (렌더 후 주입) ──
+function injectPhase4Buttons() {
+  document.querySelectorAll('.data-mgmt .btn-row').forEach(row => {
+    if (row.dataset.p4) return;
+    row.dataset.p4 = '1';
+    const archBtn = document.createElement('button');
+    archBtn.className = 'btn btn-ghost btn-sm';
+    archBtn.textContent = '🗄️ 아카이브 정리';
+    archBtn.onclick = archiveOldTasks;
+    row.appendChild(archBtn);
+    const tourBtn = document.createElement('button');
+    tourBtn.className = 'btn btn-ghost btn-sm';
+    tourBtn.textContent = '❓ 사용 가이드';
+    tourBtn.onclick = startTour;
+    row.appendChild(tourBtn);
+  });
+}
+const _p4RenderCurrentTab = window.renderCurrentTab;
+window.renderCurrentTab = function() {
+  _p4RenderCurrentTab();
+  requestAnimationFrame(injectPhase4Buttons);
+};
+
+// ── [32] openEdit에 변경 이력 표시 ──
+const _p4OpenEdit = window.openEdit;
+window.openEdit = function(id) {
+  _p4OpenEdit(id);
+  const t = tasks.find(x => x.id === id);
+  const area = $('edit-history-area');
+  if (area) {
+    if (t && Array.isArray(t.history) && t.history.length) {
+      const items = t.history.slice(-5).reverse().map(h =>
+        `<div class="history-item"><span class="ht-time">${(h.at||'').slice(0,16).replace('T',' ')}</span> · ${escHtml(h.by||'')} — ${escHtml(h.change||'')}</div>`
+      ).join('');
+      area.innerHTML = `<div class="history-log"><div style="font-size:11px;font-weight:700;color:var(--primary);margin-bottom:4px;">📜 변경 이력 (최근 5건)</div>${items}</div>`;
+    } else {
+      area.innerHTML = '';
+    }
+  }
+};
+
+// ===================== PHASE 5 ADDITIONS (빼기·검증·정리) =====================
+
+// ── [2,7] 상세 입력 토글 ──
+window.toggleAddDetail = function() {
+  const sec = $('add-detail-fields');
+  const tog = $('add-detail-toggle');
+  if (!sec) return;
+  const hidden = sec.classList.toggle('hidden');
+  if (tog) tog.textContent = hidden ? '⚙️ 상세 입력 펼치기 ▼' : '⚙️ 상세 입력 접기 ▲';
+};
+
+// ── [5] 우선순위 수동 override ──
+window.overrideNewPriority = function(val) {
+  if (!val) { calcNewPriority(); return; }  // 자동으로 복귀
+  const inp = $('new-priority'); if (inp) inp.value = val;
+  const disp = $('new-priority-display');
+  if (disp) {
+    const s = PRIORITY_STYLE[val];
+    disp.style.background = s.bg; disp.style.color = s.color;
+    disp.textContent = `직접 지정: P${val} — ${s.label}`;
+  }
+};
+// calcNewPriority가 manual override를 존중하도록 보강
+const _p4CalcNewPriority = window.calcNewPriority;
+window.calcNewPriority = function() {
+  const manual = ($('new-priority-manual')||{}).value;
+  if (manual) { overrideNewPriority(manual); return; }
+  _p4CalcNewPriority();
+};
+
+// ── [4] 실험적 기능 한계 안내 ──
+window.aiInfo = function() {
+  alert('✨ AI 문장 다듬기 (실험적 기능)\n\n' +
+    '· Claude API 키가 필요하며, 입력한 업무 내용이 외부로 전송됩니다.\n' +
+    '· 사내 보안정책·브라우저 CORS 설정에 따라 차단될 수 있습니다.\n' +
+    '· 민감정보가 포함된 업무에는 사용하지 마세요.');
+};
+
+// ── [8] 읽기전용 링크 안정화 (대용량 시 파일 대체) ──
+window.genReadOnlyLink = function() {
+  const payload = {
+    org: cfg.orgName || '경영기획팀',
+    members: cfg.members || [],
+    leader: cfg.leader || '',
+    tasks: tasks.filter(t => !t.isArchived),
+    ts: Date.now()
+  };
+  let encoded;
+  try {
+    encoded = encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(payload)))));
+  } catch(e) { showToast('링크 생성 실패: ' + e.message, 'error'); return; }
+  const url = location.href.split('#')[0] + '#view=' + encoded;
+  const input = $('readonly-url-input');
+
+  // URL이 너무 길면(브라우저·메신저 잘림) 링크 대신 파일 공유 권장
+  if (url.length > 16000) {
+    if (input) input.value = '(데이터가 많아 링크가 깁니다 — 아래 파일 공유 방식을 사용하세요)';
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type:'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `업무현황_읽기전용_${today()}.json`;
+    a.click();
+    showToast('데이터가 많아 링크 대신 읽기전용 파일을 내려받았습니다. 임원뷰에서 불러오세요.', 'warning');
+    return;
+  }
+
+  if (input) input.value = url;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(url).then(() => showToast('읽기전용 링크가 복사되었습니다!', 'success')).catch(()=>{});
+  }
+};
+
+// ── [3] 팀원 알림: 총괄 코멘트 미확인 배지 ──
+function getSeenComments() {
+  try { return JSON.parse(localStorage.getItem('wrs_seen_comments') || '{}'); } catch(e) { return {}; }
+}
+function markCommentSeen(taskId, text) {
+  const seen = getSeenComments();
+  seen[taskId] = text;
+  localStorage.setItem('wrs_seen_comments', JSON.stringify(seen));
+}
+function unseenCommentTasks() {
+  if (session.role !== 'member') return [];
+  const seen = getSeenComments();
+  return tasks.filter(t => t.member === session.name && t.adminComment && seen[t.id] !== t.adminComment);
+}
+
+// openEdit 시 해당 업무 코멘트를 '확인함'으로 표시
+const _p5OpenEdit = window.openEdit;
+window.openEdit = function(id) {
+  _p5OpenEdit(id);
+  const t = tasks.find(x => x.id === id);
+  if (t && t.adminComment && session.role === 'member') {
+    markCommentSeen(t.id, t.adminComment);
+    const badge = $('comment-alert-banner');
+    if (badge) { setTimeout(() => { if (unseenCommentTasks().length === 0) badge.remove(); }, 300); }
+  }
+};
+
+// 렌더 후 팀원 화면 상단에 미확인 코멘트 배너 주입
+function injectCommentAlert() {
+  if (session.role !== 'member') return;
+  const cont = $('content');
+  if (!cont) return;
+  const existing = $('comment-alert-banner');
+  const unseen = unseenCommentTasks();
+  if (unseen.length === 0) { if (existing) existing.remove(); return; }
+  if (existing) return;
+  const banner = document.createElement('div');
+  banner.id = 'comment-alert-banner';
+  banner.className = 'ro-banner';
+  banner.style.cssText = 'background:#EBF4FF;border-color:#90CDF4;color:#2C5282;';
+  banner.innerHTML = `💬 <strong>총괄 코멘트 ${unseen.length}건</strong>이 도착했습니다. — `
+    + unseen.slice(0,3).map(t => `<a href="#" onclick="openEdit('${t.id}');return false;" style="color:#2B6CB0;text-decoration:underline;">${escHtml(t.name)}</a>`).join(', ')
+    + (unseen.length > 3 ? ` 외 ${unseen.length-3}건` : '');
+  cont.insertBefore(banner, cont.firstChild);
+}
+
+// ── [6] 임원 뷰 드릴다운 ──
+window.renderExec = function(cont) {
+  const curMonth = getCurrentMonth();
+  if (execTeams.length === 0) {
+    cont.innerHTML = `
+      <div class="exec-summary">
+        <h2>🏢 임원 종합 대시보드</h2>
+        <div class="sub">여러 팀의 업무 현황을 통합 조회합니다.</div>
+      </div>
+      <div class="exec-load-zone">
+        <div style="font-size:36px;margin-bottom:10px;">📂</div>
+        <p>각 팀에서 내려받은 <strong>백업(JSON)</strong> 또는 <strong>읽기전용 파일</strong>을 불러오세요.</p>
+        <button class="btn btn-primary" style="margin-top:12px;" onclick="execLoadTeamFiles()">📂 팀 데이터 불러오기</button>
+      </div>`;
+    return;
+  }
+  let grandTotal=0, grandDone=0, grandOverdue=0;
+  const teamCards = execTeams.map((tm, idx) => {
+    const mt = tm.tasks.filter(t => (t.date||'').startsWith(curMonth));
+    const total = mt.length;
+    const done = mt.filter(t=>t.status==='처리완료').length;
+    const overdue = mt.filter(t => t.due && t.status!=='처리완료' && t.due < today()).length;
+    const rate = total ? Math.round(done/total*100) : 0;
+    grandTotal += total; grandDone += done; grandOverdue += overdue;
+    const rateColor = rate>=80?'#38A169':rate>=60?'#D69E2E':'#E53E3E';
+    return `<div class="exec-team-card" style="cursor:pointer;" onclick="execDrilldown(${idx})" title="클릭하여 상세 보기">
+      <h3>${escHtml(tm.team)} <span class="et-rate" style="color:${rateColor};">${rate}%</span></h3>
+      <div class="mc-stats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+        <div class="mc-stat" style="text-align:center;"><div class="n" style="font-size:20px;font-weight:700;color:var(--primary);">${total}</div><div class="l" style="font-size:11px;color:var(--text-muted);">전체</div></div>
+        <div class="mc-stat" style="text-align:center;"><div class="n" style="font-size:20px;font-weight:700;color:var(--success);">${done}</div><div class="l" style="font-size:11px;color:var(--text-muted);">완료</div></div>
+        <div class="mc-stat" style="text-align:center;"><div class="n" style="font-size:20px;font-weight:700;color:var(--accent);">${overdue}</div><div class="l" style="font-size:11px;color:var(--text-muted);">초과</div></div>
+      </div>
+      <div class="prog-wrap" style="margin-top:10px;"><div class="prog-fill ${rate>=100?'done':''}" style="width:${rate}%"></div></div>
+      <div style="text-align:right;font-size:11px;color:var(--info);margin-top:6px;">상세 보기 →</div>
+    </div>`;
+  }).join('');
+  const grandRate = grandTotal ? Math.round(grandDone/grandTotal*100) : 0;
+  cont.innerHTML = `
+    <div class="exec-summary">
+      <h2>🏢 임원 종합 대시보드</h2>
+      <div class="sub">${curMonth.replace('-','년 ')}월 · ${execTeams.length}개 팀 통합</div>
+      <div class="exec-kpi">
+        <div class="exec-kpi-item"><div class="kv">${execTeams.length}</div><div class="kl">조회 팀</div></div>
+        <div class="exec-kpi-item"><div class="kv">${grandTotal}</div><div class="kl">전체 업무</div></div>
+        <div class="exec-kpi-item"><div class="kv">${grandRate}%</div><div class="kl">전사 완료율</div></div>
+        <div class="exec-kpi-item"><div class="kv" style="color:#FC8181;">${grandOverdue}</div><div class="kl">기한초과</div></div>
+        <div class="exec-kpi-item"><div class="kv" style="color:#68D391;">${grandDone}</div><div class="kl">완료건수</div></div>
+      </div>
+    </div>
+    <div class="section-header-row">
+      <h2>팀별 현황 <span style="font-size:12px;font-weight:400;color:var(--text-muted);">(카드 클릭 → 상세)</span></h2>
+      <button class="btn btn-outline btn-sm" onclick="execLoadTeamFiles()">📂 팀 데이터 추가/갱신</button>
+    </div>
+    <div class="exec-team-grid">${teamCards}</div>
+    <div id="exec-drilldown"></div>`;
+};
+
+window.execDrilldown = function(idx) {
+  const tm = execTeams[idx];
+  if (!tm) return;
+  const area = $('exec-drilldown');
+  if (!area) return;
+  const curMonth = getCurrentMonth();
+  const mt = tm.tasks.filter(t => (t.date||'').startsWith(curMonth));
+  const rows = mt.length ? mt.map(t => {
+    const od = t.due && t.status!=='처리완료' && t.due < today();
+    return `<tr class="${od?'overdue':''}">
+      <td><strong>${escHtml(t.member||'-')}</strong></td>
+      <td>${escHtml(t.name||'')}</td>
+      <td>${catBadge(t.category)}</td>
+      <td>${typeBadge(t.taskType)}</td>
+      <td>${prioBadge(t.priority)}</td>
+      <td style="min-width:80px;">${progBar(t.progress)}</td>
+      <td style="white-space:nowrap;">${fmt(t.due)}${od?' <span style="color:var(--accent);font-size:11px;">초과</span>':''}</td>
+      <td>${statusBadge(t.status)}</td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="8"><div class="empty-state"><div class="icon">📭</div><p>이번 달 업무가 없습니다.</p></div></td></tr>`;
+  area.innerHTML = `
+    <div class="card" style="margin-top:20px;">
+      <div class="section-header-row">
+        <h2>🔍 ${escHtml(tm.team)} 상세 (${curMonth})</h2>
+        <button class="btn btn-ghost btn-sm" onclick="$('exec-drilldown').innerHTML=''">✕ 닫기</button>
+      </div>
+      <div class="table-wrap">
+        <table class="task-table">
+          <thead><tr><th>담당자</th><th>업무명</th><th>분야</th><th>구분</th><th>우선순위</th><th>진행률</th><th>완료예정일</th><th>상태</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>`;
+  area.scrollIntoView({ behavior:'smooth', block:'start' });
+};
+
+// ── 렌더 후 팀원 코멘트 알림 주입 (renderCurrentTab 체인에 추가) ──
+const _p5RenderCurrentTab = window.renderCurrentTab;
+window.renderCurrentTab = function() {
+  _p5RenderCurrentTab();
+  requestAnimationFrame(injectCommentAlert);
+};
+
+// ===================== PHASE 6 ADDITIONS (데이터안전·가치증명·polish) =====================
+
+// ── [2] 자동 백업 ──
+// (a) 공유폴더 주1회 자동 백업
+async function autoBackupToFolder() {
+  if (cfg.storage !== 'folder' || !sharedFolderHandle) return;
+  const last = localStorage.getItem('wrs_last_autobackup') || '';
+  const weekAgo = (() => { const d=new Date(); d.setDate(d.getDate()-7); return d.toISOString().slice(0,10); })();
+  if (last >= weekAgo) return; // 최근 7일 내 백업 있음
+  try {
+    const perm = await sharedFolderHandle.queryPermission({ mode:'readwrite' });
+    if (perm !== 'granted') return;
+    const fileName = `_자동백업_${session.name}_${today()}.json`;
+    const fh = await sharedFolderHandle.getFileHandle(fileName, { create:true });
+    const w = await fh.createWritable();
+    await w.write(JSON.stringify({ member:session.name, tasks: tasks.filter(t=>t.member===session.name), backupAt:new Date().toISOString() }, null, 2));
+    await w.close();
+    localStorage.setItem('wrs_last_autobackup', today());
+    console.log('[자동백업] 완료:', fileName);
+  } catch(e) { console.warn('[자동백업] 실패:', e); }
+}
+
+// (b) 로그아웃 시 백업 확인
+window.resetApp = function() {
+  if (READONLY) { location.href = location.pathname; return; }
+  const hasData = tasks.some(t => t.member === session.name);
+  if (hasData && session.role === 'member') {
+    const ans = confirm('로그아웃하기 전에 내 업무 데이터를 백업하시겠습니까?\n(확인=백업 후 로그아웃, 취소=그냥 로그아웃)');
+    if (ans) { try { backupTasks(); } catch(e){} }
+  }
+  if (!confirm('로그아웃 하시겠습니까?')) return;
+  if (syncInterval) clearInterval(syncInterval);
+  syncInterval = null;
+  sharedFolderHandle = null;
+  sessionStorage.removeItem('wrs_session');
+  session = { role:'', name:'' };
+  $('app').classList.add('hidden');
+  showLogin();
+};
+
+// ── [3] 가치 증명 위젯 ──
+function getMetrics() {
+  try { return JSON.parse(localStorage.getItem('wrs_metrics') || '{"weekly":0,"monthly":0}'); }
+  catch(e) { return { weekly:0, monthly:0 }; }
+}
+function bumpMetric(kind) {
+  // 세션당 1회만 카운트 (탭 반복 진입 시 중복 방지)
+  const flagKey = `wrs_metric_seen_${kind}`;
+  if (sessionStorage.getItem(flagKey)) return;
+  sessionStorage.setItem(flagKey, '1');
+  const m = getMetrics();
+  m[kind] = (m[kind] || 0) + 1;
+  localStorage.setItem('wrs_metrics', JSON.stringify(m));
+}
+function savedHoursLabel() {
+  const m = getMetrics();
+  // 추정: 주간보고 1건 수기작성 30분, 월간보고 1건 2시간 절감
+  const mins = m.weekly * 30 + m.monthly * 120;
+  const h = Math.floor(mins / 60), mm = mins % 60;
+  return { reports: m.weekly + m.monthly, weekly:m.weekly, monthly:m.monthly, label: (h>0?`${h}시간 `:'') + `${mm}분` };
+}
+function valueWidgetHTML() {
+  const v = savedHoursLabel();
+  if (v.reports === 0) return '';
+  return `<div class="value-widget">
+    <div class="vw-ic">⏱️</div>
+    <div class="vw-main">
+      <div class="vw-num">보고서 자동 생성으로 약 ${v.label} 절감</div>
+      <div class="vw-sub">수기 작성 대비 추정치 · 주간보고 ${v.weekly}건 + 월간보고 ${v.monthly}건 자동화</div>
+    </div>
+    <div class="vw-stat"><div class="n">${v.reports}</div><div class="l">자동 보고서</div></div>
+  </div>`;
+}
+// 보고서 탭 진입 시 카운트
+const _p5InitWeekly = window.initWeekly;
+window.initWeekly = function(cont) { bumpMetric('weekly'); _p5InitWeekly(cont); };
+const _p5InitMonthlyReport = window.initMonthlyReport;
+window.initMonthlyReport = function(cont) { bumpMetric('monthly'); _p5InitMonthlyReport(cont); };
+
+// 가치 위젯을 대시보드/내업무 상단에 주입
+function injectValueWidget() {
+  if (READONLY) return;
+  if (!(session.role === 'leader' && currentTab === 0) && !(session.role === 'member' && currentTab === 0)) return;
+  const cont = $('content');
+  if (!cont || $('value-widget-el')) return;
+  const html = valueWidgetHTML();
+  if (!html) return;
+  const wrap = document.createElement('div');
+  wrap.innerHTML = html;
+  const el = wrap.firstElementChild;
+  el.id = 'value-widget-el';   // 실제 삽입 노드에 id 부여 (중복 방지 가드 정상화)
+  cont.insertBefore(el, cont.firstChild);
+}
+
+// ── [5] polish: 삭제 되돌리기 새로고침 보존 (sessionStorage) ──
+// _deletedCache를 sessionStorage에도 저장해 동기화/새로고침에도 5초간 복구 가능
+const _p5Del = window.del;
+window.del = async function(id) {
+  const t = tasks.find(x => x.id === id);
+  if (t) sessionStorage.setItem('wrs_last_deleted', JSON.stringify({ task:t, at:Date.now() }));
+  return _p5Del(id);
+};
+
+// ── 렌더 체인에 위젯·자동백업 연결 ──
+const _p6RenderCurrentTab = window.renderCurrentTab;
+window.renderCurrentTab = function() {
+  _p6RenderCurrentTab();
+  requestAnimationFrame(injectValueWidget);
+};
+
+// afterLogin 후 자동 백업 트리거
+const _p6AfterLogin = window.afterLogin;
+window.afterLogin = async function() {
+  await _p6AfterLogin();
+  setTimeout(autoBackupToFolder, 3000);
+};
+
+// ===================== PHASE 7 ADDITIONS (견고성·수명주기·격·코드건강) =====================
+
+// ── [7] 렌더 후처리 단일화 ──
+// 기존: renderCurrentTab이 inject 3종을 각각 requestAnimationFrame으로 호출(rAF 3회).
+// 개선: 단일 afterRender()로 통합하고, 개별 inject의 중복 rAF는 무력화.
+window._suppressLegacyInjects = true;
+function afterRender() {
+  try { if (typeof injectPhase4Buttons === 'function') injectPhase4Buttons(); } catch(e){}
+  try { if (typeof injectCommentAlert === 'function') injectCommentAlert(); } catch(e){}
+  try { if (typeof injectValueWidget === 'function') injectValueWidget(); } catch(e){}
+}
+// 최종 renderCurrentTab: 기존 체인 1회 호출 + 단일 rAF 후처리
+const _p6Chain = window.renderCurrentTab;
+window.renderCurrentTab = function() {
+  _p6Chain();                       // 기존 체인(스크롤·exec·readonly 배너 등) 실행
+  requestAnimationFrame(afterRender); // 후처리는 단 한 번만
+};
+// 기존 체인 내부의 개별 rAF 주입이 또 돌더라도 inject 함수는 모두 멱등(중복 가드)이라 무해.
+
+// ── [5] 자동 아카이브 제안 ──
+function suggestArchive() {
+  if (READONLY || session.role !== 'member') return;
+  if (sessionStorage.getItem('wrs_archive_suggested')) return;
+  const cutoff = (() => { const d=new Date(); d.setMonth(d.getMonth()-3); return d.toISOString().slice(0,10); })();
+  const old = tasks.filter(t => !t.isArchived && t.status==='처리완료' && (t.date||'') < cutoff && t.member===session.name);
+  if (old.length >= 5) {
+    sessionStorage.setItem('wrs_archive_suggested','1');
+    setTimeout(() => {
+      showToast(`3개월 이전 완료 업무 ${old.length}건이 쌓였습니다. 데이터 관리에서 "🗄️ 아카이브 정리"를 권장합니다.`, 'info');
+    }, 1500);
+  }
+}
+
+// ── [6] 표기 격: 숫자 콤마 · 상대 날짜 ──
+window.nf = n => (parseInt(n)||0).toLocaleString('ko-KR');
+window.relDate = function(d) {
+  if (!d) return '-';
+  const diff = Math.floor((new Date(today()) - new Date(d)) / 86400000);
+  if (diff === 0) return '오늘';
+  if (diff === 1) return '어제';
+  if (diff === -1) return '내일';
+  if (diff > 1 && diff <= 7) return `${diff}일 전`;
+  if (diff < -1 && diff >= -7) return `${Math.abs(diff)}일 후`;
+  return fmt(d);
+};
+
+// ── [4] 모바일 헤더 "더보기" 통합 ──
+function setupHeaderMore() {
+  const header = document.getElementById('header');
+  if (!header || document.getElementById('hdr-more-wrap')) return;
+  // 보조 버튼(설정공유·도움말)을 더보기로 묶음 — 좁은 화면 가독성
+  const share = [...header.querySelectorAll('.header-btn')].find(b => b.textContent.includes('설정공유'));
+  const help  = [...header.querySelectorAll('.header-btn')].find(b => b.textContent.includes('도움말'));
+  if (!share || !help) return;
+  const wrap = document.createElement('div');
+  wrap.id = 'hdr-more-wrap';
+  wrap.style.cssText = 'position:relative;display:inline-block;';
+  const btn = document.createElement('button');
+  btn.className = 'header-btn';
+  btn.textContent = '⋯ 더보기';
+  btn.onclick = () => { const m=document.getElementById('hdr-more-menu'); m.style.display = m.style.display==='block'?'none':'block'; };
+  const menu = document.createElement('div');
+  menu.id = 'hdr-more-menu';
+  menu.style.cssText = 'display:none;position:absolute;right:0;top:110%;background:#fff;border:1px solid var(--border);border-radius:8px;box-shadow:var(--shadow);padding:6px;z-index:200;min-width:140px;';
+  share.parentNode.insertBefore(wrap, share);
+  wrap.appendChild(btn); wrap.appendChild(menu);
+  [share, help].forEach(b => {
+    b.classList.add('hdr-more-item');
+    b.style.cssText = 'display:block;width:100%;text-align:left;margin:2px 0;color:var(--text);background:transparent;border:none;';
+    menu.appendChild(b);
+  });
+  document.addEventListener('click', e => {
+    if (!wrap.contains(e.target)) menu.style.display='none';
+  });
+}
+
+// afterLogin 후 자동 아카이브 제안 + 헤더 정리
+const _p7AfterLogin = window.afterLogin;
+window.afterLogin = async function() {
+  await _p7AfterLogin();
+  suggestArchive();
+  if (window.matchMedia && window.matchMedia('(max-width:768px)').matches) setupHeaderMore();
+};
+
+// ===================== PHASE 8 ADDITIONS (성능 윈도잉 · 렌더 단일화) =====================
+
+// [윈도잉] 1회 렌더 최대 행 수
+const ROW_CAP = 150;
+window.ROW_CAP = ROW_CAP; // 인라인 onclick 핸들러에서도 접근 가능하도록 노출
+
+// 탭 전환 시 윈도잉 한도 초기화(다른 탭 갔다오면 처음부터)
+const _p7ShowTab = window.showTab;
+window.showTab = function(idx) {
+  window._myRowLimit = ROW_CAP;
+  window._allRowLimit = ROW_CAP;
+  _p7ShowTab(idx);
+};
+
+// ── 렌더 래퍼층 완전 단일화 ──
+// 그동안 renderCurrentTab은 Phase1~7에서 7중으로 래핑돼 있었음(스크롤/exec/readonly/버튼/코멘트/위젯/afterRender).
+// 이를 단일 함수로 통합: ① 디스패치 ② readonly 배너 ③ 스크롤 복원 ④ 후처리(afterRender) 1회.
+let _scrollMemo = 0;
+window.renderCurrentTab = function() {
+  const cont = $('content');
+  if (!cont || !session.role) return;
+  _scrollMemo = window.scrollY;
+
+  // ① 역할·탭별 디스패치
+  if (session.role === 'exec') {
+    renderExec(cont);
+  } else if (session.role === 'leader') {
+    [renderDashboard, renderAll, renderPriority, renderMonthly, initWeekly, initMonthlyReport][currentTab]?.(cont);
+  } else {
+    [renderMy, renderMyPriority, renderMyMonthly, initWeekly, initMonthlyReport][currentTab]?.(cont);
+  }
+
+  // ② 읽기 전용 배너
+  if (READONLY && !cont.querySelector('.ro-banner')) {
+    const b = document.createElement('div');
+    b.className = 'ro-banner';
+    b.innerHTML = '👁️ <strong>읽기 전용 모드</strong> — 이 화면은 열람용이며 수정할 수 없습니다.';
+    cont.insertBefore(b, cont.firstChild);
+  }
+
+  // ③④ 스크롤 복원 + 후처리는 단 한 번의 rAF로
+  requestAnimationFrame(() => {
+    window.scrollTo(0, _scrollMemo);
+    afterRender();
+  });
+};
+// 구버전 alias 재지정 (refresh가 옛 base를 가리키던 문제 방지)
+window.refresh = window.renderCurrentTab;
+
+// ===================== START =====================
+window.$ = $;
+window.myFilters = myFilters;
+window.allFilters = allFilters;
+window.prioFilters = prioFilters;
+window.weekFilters = weekFilters;
+window.mrFilters = mrFilters;
+
+init();
+</script>
+</body>
+</html>
