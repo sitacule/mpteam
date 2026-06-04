@@ -4119,10 +4119,52 @@ window.showTab = function(idx) {
 // 그동안 renderCurrentTab은 Phase1~7에서 7중으로 래핑돼 있었음(스크롤/exec/readonly/버튼/코멘트/위젯/afterRender).
 // 이를 단일 함수로 통합: ① 디스패치 ② readonly 배너 ③ 스크롤 복원 ④ 후처리(afterRender) 1회.
 let _scrollMemo = 0;
+
+// [입력 보존] 자동 동기화·스냅샷 재렌더 시 작성 중이던 등록 폼이 날아가는 문제 방지
+const _ADD_FORM_FIELDS = ['new-name','new-desc','new-note','new-month-comment','new-category',
+  'new-type','new-status','new-due','new-urgency','new-importance','new-priority',
+  'new-priority-manual','new-recurrence'];
+function captureAddForm() {
+  const form = document.getElementById('add-form');
+  if (!form) return null;
+  // 의미 있는 입력이 있거나 폼에 포커스가 있을 때만 보존
+  const ae = document.activeElement;
+  const focused = ae && form.contains(ae);
+  const hasInput = ['new-name','new-desc','new-note','new-month-comment']
+    .some(id => (document.getElementById(id)?.value || '').trim() !== '');
+  if (!focused && !hasInput) return null;
+  const snap = { values:{}, progress: document.getElementById('new-progress')?.value || '0',
+    detailOpen: !document.getElementById('add-detail-fields')?.classList.contains('hidden'),
+    activeId: focused ? ae.id : null,
+    selStart: focused && ae.selectionStart!=null ? ae.selectionStart : null,
+    selEnd: focused && ae.selectionEnd!=null ? ae.selectionEnd : null };
+  _ADD_FORM_FIELDS.forEach(id => { const el=document.getElementById(id); if(el) snap.values[id]=el.value; });
+  return snap;
+}
+function restoreAddForm(snap) {
+  if (!snap) return;
+  const form = document.getElementById('add-form');
+  if (!form) return;
+  // 상세 영역 먼저 펼쳐야 내부 필드 복원 가능
+  if (snap.detailOpen) {
+    const sec=document.getElementById('add-detail-fields');
+    if (sec && sec.classList.contains('hidden')) toggleAddDetail();
+  }
+  _ADD_FORM_FIELDS.forEach(id => { const el=document.getElementById(id); if(el && snap.values[id]!=null) el.value=snap.values[id]; });
+  if (typeof setNewProg==='function') setNewProg(parseInt(snap.progress)||0);
+  if (typeof calcNewPriority==='function') calcNewPriority();
+  // 포커스·커서 복원
+  if (snap.activeId) {
+    const el=document.getElementById(snap.activeId);
+    if (el) { try { el.focus(); if(snap.selStart!=null && el.setSelectionRange) el.setSelectionRange(snap.selStart, snap.selEnd); } catch(e){} }
+  }
+}
+
 window.renderCurrentTab = function() {
   const cont = $('content');
   if (!cont || !session.role) return;
   _scrollMemo = window.scrollY;
+  const _formSnap = captureAddForm();   // 입력 중 폼 상태 스냅샷
 
   // ① 역할·탭별 디스패치
   if (session.role === 'exec') {
@@ -4132,6 +4174,8 @@ window.renderCurrentTab = function() {
   } else {
     [renderMy, renderMyPriority, renderMyMonthly, initWeekly, initMonthlyReport][currentTab]?.(cont);
   }
+
+  restoreAddForm(_formSnap);             // 작성 중이던 입력값·커서 복원
 
   // ② 읽기 전용 배너
   if (READONLY && !cont.querySelector('.ro-banner')) {
