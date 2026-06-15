@@ -431,6 +431,7 @@ body.readonly .ro-hide{display:none!important;}
 .fu-완료{background:#C6F6D5;color:#276749;}
 .fu-row-완료{opacity:.6;}
 .fu-overdue{color:var(--accent);font-weight:700;}
+.fu-issuer-badge{background:#FAF5FF;color:#553C9A;border:1px solid #D6BCFA;white-space:nowrap;}
 
 /* History log */
 .history-log{margin-top:8px;border-top:1px dashed var(--border);padding-top:8px;}
@@ -790,6 +791,23 @@ body.readonly .ro-hide{display:none!important;}
     <h2>📌 지시사항</h2>
     <p class="subtitle">월간보고 후속 지시사항을 등록하고 담당자를 지정합니다.</p>
     <input type="hidden" id="fu-id">
+    <div class="form-row" style="margin-bottom:12px;">
+      <div class="form-group" style="margin-bottom:0;">
+        <label>회의명(회의록) *</label>
+        <input type="text" id="fu-meeting" list="fu-meeting-list" placeholder="예: 6월 월간보고 회의">
+        <datalist id="fu-meeting-list"></datalist>
+      </div>
+      <div class="form-group" style="margin-bottom:0;">
+        <label>지시 주체 *</label>
+        <input type="text" id="fu-issuer" list="fu-issuer-list" placeholder="예: 대표이사 / 담당임원 / 총괄">
+        <datalist id="fu-issuer-list">
+          <option value="대표이사"></option>
+          <option value="담당임원"></option>
+          <option value="총괄"></option>
+          <option value="유관부서"></option>
+        </datalist>
+      </div>
+    </div>
     <div class="form-group">
       <label>지시 내용 *</label>
       <input type="text" id="fu-title" placeholder="예: 3분기 예산안 재검토 보고">
@@ -4427,8 +4445,13 @@ function fuOverdue(f) {
 window.openFollowup = function(id) {
   const members = cfg.members || [];
   $('fu-assignee').innerHTML = members.map(m=>`<option value="${escHtml(m)}">${escHtml(m)}</option>`).join('');
+  // 회의명 자동완성: 기존 회의명 목록
+  const meetings = [...new Set(followups.map(f=>f.meeting).filter(Boolean))];
+  $('fu-meeting-list').innerHTML = meetings.map(mt=>`<option value="${escHtml(mt)}"></option>`).join('');
   const f = id ? followups.find(x=>x.id===id) : null;
   $('fu-id').value = f ? f.id : '';
+  $('fu-meeting').value = f ? (f.meeting||'') : '';
+  $('fu-issuer').value = f ? (f.issuer||'') : '';
   $('fu-title').value = f ? f.title : '';
   $('fu-detail').value = f ? (f.detail||'') : '';
   $('fu-assignee').value = f ? f.assignee : (members[0]||'');
@@ -4440,10 +4463,14 @@ window.openFollowup = function(id) {
 
 window.saveFollowup = function() {
   const title = $('fu-title').value.trim();
+  const meeting = $('fu-meeting').value.trim();
+  const issuer = $('fu-issuer').value.trim();
+  if (!meeting) { alert('회의명(회의록)을 입력하세요.'); return; }
+  if (!issuer) { alert('지시 주체를 입력하세요.'); return; }
   if (!title) { alert('지시 내용을 입력하세요.'); return; }
   const id = $('fu-id').value;
   const payload = {
-    title,
+    meeting, issuer, title,
     detail: $('fu-detail').value.trim(),
     assignee: $('fu-assignee').value,
     due: $('fu-due').value,
@@ -4462,6 +4489,8 @@ window.saveFollowup = function() {
   renderCurrentTab();
   showToast('지시사항이 저장되었습니다.', 'success');
 };
+
+window.setFuView = function(v) { window._fuView = v; renderFollowups($('content')); };
 
 window.delFollowup = function(id) {
   if (!confirm('이 지시사항을 삭제하시겠습니까?')) return;
@@ -4482,54 +4511,121 @@ window.setFollowupStatus = function(id, val) {
 };
 
 // ── 렌더 ──
-const fuFilters = { assignee:'all', status:'all' };
+const fuFilters = { assignee:'all', status:'all', issuer:'all' };
+if (window._fuView === undefined) window._fuView = 'month'; // 'month' | 'assignee'
+
+function fuStatusSelect(f) {
+  return `<select onchange="setFollowupStatus('${f.id}',this.value)" style="padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:12px;">
+      <option value="대기"${f.status==='대기'?' selected':''}>대기</option>
+      <option value="진행중"${f.status==='진행중'?' selected':''}>진행중</option>
+      <option value="완료"${f.status==='완료'?' selected':''}>완료</option>
+    </select>`;
+}
+function fuActionCell(f, isLeader) {
+  return isLeader
+    ? `<button class="btn btn-outline btn-sm" onclick="openFollowup('${f.id}')">수정</button>
+       <button class="btn btn-danger btn-sm" style="margin-top:4px;" onclick="delFollowup('${f.id}')">삭제</button>`
+    : `<span style="font-size:11px;color:var(--text-muted);">등록: ${escHtml(f.createdBy||'총괄')}</span>`;
+}
+// 회의록(회의명) 단위로 묶어 표 형태로 출력
+function fuMeetingTables(list, isLeader, showAssignee) {
+  const byMeeting = {};
+  list.forEach(f => { const k=f.meeting||'(회의명 없음)'; (byMeeting[k]=byMeeting[k]||[]).push(f); });
+  return Object.entries(byMeeting).map(([meeting, items]) => {
+    const issuers = [...new Set(items.map(i=>i.issuer).filter(Boolean))].join(', ');
+    const rows = items
+      .sort((a,b)=>((a.status==='완료')?1:0)-((b.status==='완료')?1:0))
+      .map(f => {
+        const od = fuOverdue(f);
+        return `<tr class="${f.status==='완료'?'fu-row-완료':''}">
+          <td><span class="fu-badge fu-issuer-badge">${escHtml(f.issuer||'-')}</span></td>
+          <td>
+            <div style="font-weight:600;">${escHtml(f.title)}</div>
+            ${f.detail?`<div style="color:var(--text-muted);font-size:12px;margin-top:2px;">${escHtml(f.detail)}</div>`:''}
+          </td>
+          ${showAssignee?`<td><strong>${escHtml(f.assignee||'-')}</strong></td>`:''}
+          <td style="white-space:nowrap;" class="${od?'fu-overdue':''}">${fmt(f.due)}${od?'<br><span style="font-size:11px;">기한초과</span>':''}</td>
+          <td>${fuStatusSelect(f)}</td>
+          <td style="white-space:nowrap;">${fuActionCell(f, isLeader)}</td>
+        </tr>`;
+      }).join('');
+    const doneN = items.filter(i=>i.status==='완료').length;
+    return `<div style="margin-bottom:14px;">
+      <div style="font-weight:700;color:var(--primary);font-size:13px;margin:6px 0;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        🗒️ ${escHtml(meeting)}
+        <span style="font-weight:400;color:var(--text-muted);font-size:12px;">지시주체: ${escHtml(issuers||'-')} · ${doneN}/${items.length} 완료</span>
+      </div>
+      <div class="table-wrap">
+        <table class="task-table">
+          <thead><tr><th>지시주체</th><th>지시 내용</th>${showAssignee?'<th>담당자</th>':''}<th>완료기한</th><th>상태</th><th>관리</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>`;
+  }).join('');
+}
+
 window.renderFollowups = function(cont) {
   if ($('fu-f-assignee')) fuFilters.assignee = $('fu-f-assignee').value;
   if ($('fu-f-status')) fuFilters.status = $('fu-f-status').value;
+  if ($('fu-f-issuer')) fuFilters.issuer = $('fu-f-issuer').value;
 
   const isLeader = session.role === 'leader';
+  const view = window._fuView || 'month';
   let list = [...followups];
-  if (!isLeader) list = list.filter(f => f.assignee === session.name); // 팀원은 본인 지정분만
+  if (!isLeader) list = list.filter(f => f.assignee === session.name);
   if (isLeader && fuFilters.assignee !== 'all') list = list.filter(f => f.assignee === fuFilters.assignee);
   if (fuFilters.status !== 'all') list = list.filter(f => f.status === fuFilters.status);
-  // 완료는 아래로
-  list.sort((a,b)=>((a.status==='완료')?1:0)-((b.status==='완료')?1:0));
+  if (fuFilters.issuer !== 'all') list = list.filter(f => (f.issuer||'') === fuFilters.issuer);
 
   const total = (isLeader?followups:followups.filter(f=>f.assignee===session.name));
   const cntWait = total.filter(f=>f.status==='대기').length;
   const cntProg = total.filter(f=>f.status==='진행중').length;
   const cntDone = total.filter(f=>f.status==='완료').length;
   const cntOver = total.filter(fuOverdue).length;
+  const issuerList = [...new Set(followups.map(f=>f.issuer).filter(Boolean))];
 
-  const rows = list.map(f => {
-    const od = fuOverdue(f);
-    return `<tr class="${f.status==='완료'?'fu-row-완료':''}">
-      <td>
-        <div style="font-weight:600;">${escHtml(f.title)}</div>
-        ${f.detail?`<div style="color:var(--text-muted);font-size:12px;margin-top:2px;">${escHtml(f.detail)}</div>`:''}
-        ${f.month?`<div style="color:var(--text-muted);font-size:11px;margin-top:2px;">📑 ${f.month} 보고 후속</div>`:''}
-      </td>
-      <td><strong>${escHtml(f.assignee||'-')}</strong></td>
-      <td style="white-space:nowrap;" class="${od?'fu-overdue':''}">${fmt(f.due)}${od?'<br><span style="font-size:11px;">기한초과</span>':''}</td>
-      <td>
-        <select onchange="setFollowupStatus('${f.id}',this.value)" style="padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:12px;">
-          <option value="대기"${f.status==='대기'?' selected':''}>대기</option>
-          <option value="진행중"${f.status==='진행중'?' selected':''}>진행중</option>
-          <option value="완료"${f.status==='완료'?' selected':''}>완료</option>
-        </select>
-      </td>
-      <td style="white-space:nowrap;">
-        ${isLeader?`<button class="btn btn-outline btn-sm" onclick="openFollowup('${f.id}')">수정</button>
-        <button class="btn btn-danger btn-sm" style="margin-top:4px;" onclick="delFollowup('${f.id}')">삭제</button>`
-        :`<span style="font-size:11px;color:var(--text-muted);">지시자: ${escHtml(f.createdBy||'총괄')}</span>`}
-      </td>
-    </tr>`;
-  }).join('') || `<tr><td colspan="5"><div class="empty-state"><div class="icon">📌</div><p>${isLeader?'등록된 지시사항이 없습니다. [+ 지시사항 등록]으로 추가하세요.':'나에게 지정된 지시사항이 없습니다.'}</p></div></td></tr>`;
+  // 본문: 월별 또는 담당자별 그룹
+  let body = '';
+  if (list.length === 0) {
+    body = `<div class="card"><div class="empty-state"><div class="icon">📌</div><p>${isLeader?'등록된 지시사항이 없습니다. [+ 지시사항 등록]으로 추가하세요.':'나에게 지정된 지시사항이 없습니다.'}</p></div></div>`;
+  } else if (view === 'assignee') {
+    const targets = isLeader ? (cfg.members||[]) : [session.name];
+    body = targets.map(m => {
+      const items = list.filter(f=>f.assignee===m);
+      if (!items.length) return '';
+      const d=items.filter(i=>i.status==='완료').length, p=items.filter(i=>i.status==='진행중').length, w=items.filter(i=>i.status==='대기').length;
+      return `<div class="card" style="margin-bottom:16px;">
+        <div class="section-header-row" style="margin-bottom:10px;">
+          <h2 style="font-size:15px;">👤 ${escHtml(m)} <span style="font-weight:400;color:var(--text-muted);font-size:12px;">전체 ${items.length} · 대기 ${w} · 진행 ${p} · 완료 ${d}</span></h2>
+        </div>
+        ${fuMeetingTables(items, isLeader, false)}
+      </div>`;
+    }).join('') || `<div class="card"><div class="empty-state"><div class="icon">📌</div><p>표시할 지시사항이 없습니다.</p></div></div>`;
+  } else {
+    // 월별
+    const months = [...new Set(list.map(f=>f.month||'(월 미지정)'))].sort().reverse();
+    body = months.map(mon => {
+      const items = list.filter(f=>(f.month||'(월 미지정)')===mon);
+      const d=items.filter(i=>i.status==='완료').length;
+      const label = /^\d{4}-\d{2}$/.test(mon) ? `${mon.split('-')[0]}년 ${parseInt(mon.split('-')[1])}월` : mon;
+      return `<div class="card" style="margin-bottom:16px;">
+        <div class="section-header-row" style="margin-bottom:10px;">
+          <h2 style="font-size:15px;">📅 ${label} <span style="font-weight:400;color:var(--text-muted);font-size:12px;">${d}/${items.length} 완료</span></h2>
+        </div>
+        ${fuMeetingTables(items, isLeader, true)}
+      </div>`;
+    }).join('');
+  }
 
   cont.innerHTML = `
     <div class="section-header-row">
       <h2>📌 ${isLeader?'월간보고 후속 지시사항':'나에게 지정된 지시사항'}</h2>
-      ${isLeader?`<button class="btn btn-primary btn-sm" onclick="openFollowup()">+ 지시사항 등록</button>`:''}
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-sm ${view==='month'?'btn-primary':'btn-ghost'}" onclick="setFuView('month')">📅 월별</button>
+        <button class="btn btn-sm ${view==='assignee'?'btn-primary':'btn-ghost'}" onclick="setFuView('assignee')">👤 담당자별</button>
+        ${isLeader?`<button class="btn btn-accent btn-sm" onclick="openFollowup()">+ 지시사항 등록</button>`:''}
+      </div>
     </div>
     <div class="stat-cards">
       <div class="stat-card"><div class="num">${total.length}</div><div class="lbl">전체</div></div>
@@ -4538,27 +4634,24 @@ window.renderFollowups = function(cont) {
       <div class="stat-card"><div class="num green">${cntDone}</div><div class="lbl">완료</div></div>
       <div class="stat-card"><div class="num red">${cntOver}</div><div class="lbl">기한초과</div></div>
     </div>
-    <div class="card">
-      <div class="filter-bar">
-        ${isLeader?`<select id="fu-f-assignee" onchange="fuFilters.assignee=this.value;renderFollowups($('content'))">
-          <option value="all">전체 담당자</option>
-          ${(cfg.members||[]).map(m=>`<option value="${m}"${fuFilters.assignee===m?' selected':''}>${escHtml(m)}</option>`).join('')}
-        </select>`:''}
-        <select id="fu-f-status" onchange="fuFilters.status=this.value;renderFollowups($('content'))">
-          <option value="all"${fuFilters.status==='all'?' selected':''}>전체 상태</option>
-          <option value="대기"${fuFilters.status==='대기'?' selected':''}>대기</option>
-          <option value="진행중"${fuFilters.status==='진행중'?' selected':''}>진행중</option>
-          <option value="완료"${fuFilters.status==='완료'?' selected':''}>완료</option>
-        </select>
-        <span style="color:var(--text-muted);font-size:13px;">${list.length}건</span>
-      </div>
-      <div class="table-wrap">
-        <table class="task-table">
-          <thead><tr><th>지시 내용</th><th>담당자</th><th>완료기한</th><th>상태</th><th>관리</th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-      </div>
-    </div>`;
+    <div class="filter-bar" style="margin-bottom:16px;">
+      ${isLeader?`<select id="fu-f-assignee" onchange="fuFilters.assignee=this.value;renderFollowups($('content'))">
+        <option value="all">전체 담당자</option>
+        ${(cfg.members||[]).map(m=>`<option value="${m}"${fuFilters.assignee===m?' selected':''}>${escHtml(m)}</option>`).join('')}
+      </select>`:''}
+      <select id="fu-f-issuer" onchange="fuFilters.issuer=this.value;renderFollowups($('content'))">
+        <option value="all">전체 지시주체</option>
+        ${issuerList.map(s=>`<option value="${escHtml(s)}"${fuFilters.issuer===s?' selected':''}>${escHtml(s)}</option>`).join('')}
+      </select>
+      <select id="fu-f-status" onchange="fuFilters.status=this.value;renderFollowups($('content'))">
+        <option value="all"${fuFilters.status==='all'?' selected':''}>전체 상태</option>
+        <option value="대기"${fuFilters.status==='대기'?' selected':''}>대기</option>
+        <option value="진행중"${fuFilters.status==='진행중'?' selected':''}>진행중</option>
+        <option value="완료"${fuFilters.status==='완료'?' selected':''}>완료</option>
+      </select>
+      <span style="color:var(--text-muted);font-size:13px;">${list.length}건</span>
+    </div>
+    ${body}`;
 };
 
 // 로그인 후 지시사항 로드(로컬 + 폴더)
