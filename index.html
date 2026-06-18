@@ -432,6 +432,11 @@ body.readonly .ro-hide{display:none!important;}
 .fu-row-완료{opacity:.6;}
 .fu-overdue{color:var(--accent);font-weight:700;}
 .fu-issuer-badge{background:#FAF5FF;color:#553C9A;border:1px solid #D6BCFA;white-space:nowrap;}
+.fu-detail{margin:4px 0 0;padding-left:16px;color:var(--text);font-size:12px;line-height:1.6;}
+.fu-detail li{margin-bottom:3px;}
+.fu-detail li::marker{color:var(--primary);}
+.fu-detail li.fu-d-plain{list-style:none;margin-left:-16px;color:var(--text-muted);}
+.fu-detail-single{margin-top:4px;color:var(--text);font-size:12px;line-height:1.6;white-space:pre-wrap;}
 
 /* History log */
 .history-log{margin-top:8px;border-top:1px dashed var(--border);padding-top:8px;}
@@ -4551,6 +4556,22 @@ window.setFollowupStatus = function(id, val) {
 const fuFilters = { assignee:'all', status:'all', issuer:'all' };
 if (window._fuView === undefined) window._fuView = 'month'; // 'month' | 'assignee'
 
+// 세부설명을 줄/글머리 단위로 정돈해 가시성 향상
+function fuFormatDetail(text) {
+  let norm = String(text||'').replace(/\r/g,'');
+  norm = norm.replace(/\s*-->\s*/g, ' → ');          // 화살표 정리
+  // 글머리(-, •)를 항목 경계로 분리 (뒤 공백 유무 무관, 줄 시작/공백 뒤의 기호만)
+  norm = norm.replace(/(^|[\s])[-•]\s*/g, '\n');
+  const lines = norm.split('\n').map(l=>l.trim()).filter(Boolean);
+  if (!lines.length) return '';
+  // 글머리가 하나도 인식되지 않으면(=단일 항목) 일반 줄로 표시
+  if (lines.length === 1) {
+    return `<div class="fu-detail-single">${escHtml(lines[0])}</div>`;
+  }
+  const items = lines.map(l => `<li>${escHtml(l)}</li>`).join('');
+  return `<ul class="fu-detail">${items}</ul>`;
+}
+
 function fuStatusSelect(f) {
   return `<select onchange="setFollowupStatus('${f.id}',this.value)" style="padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:12px;">
       <option value="대기"${f.status==='대기'?' selected':''}>대기</option>
@@ -4577,8 +4598,8 @@ function fuMeetingTables(list, isLeader, showAssignee) {
         return `<tr class="${f.status==='완료'?'fu-row-완료':''}">
           <td><span class="fu-badge fu-issuer-badge">${escHtml(f.issuer||'-')}</span></td>
           <td>
-            <div style="font-weight:600;">${escHtml(f.title)}</div>
-            ${f.detail?`<div style="color:var(--text-muted);font-size:12px;margin-top:2px;">${escHtml(f.detail)}</div>`:''}
+            <div style="font-weight:600;margin-bottom:3px;">${escHtml(f.title)}</div>
+            ${f.detail?fuFormatDetail(f.detail):''}
           </td>
           ${showAssignee?`<td><strong>${escHtml(f.assignee||'-')}</strong></td>`:''}
           <td style="white-space:nowrap;" class="${od?'fu-overdue':''}">${fmt(f.due)}${od?'<br><span style="font-size:11px;">기한초과</span>':''}</td>
