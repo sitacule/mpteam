@@ -2534,6 +2534,7 @@ window.renderMy = function(cont) {
     <div class="data-mgmt">
       <h4>📦 데이터 관리</h4>
       <div class="btn-row">
+        ${cfg.storage==='folder'?`<button class="btn btn-accent btn-sm" onclick="restoreMyTasksFromFolder(false)" title="공유폴더의 내 업무 파일을 불러옵니다">📥 내 업무 복원(공유폴더)</button>`:''}
         <button class="btn btn-outline btn-sm" onclick="backupTasks()">💾 백업 (JSON)</button>
         <button class="btn btn-ghost btn-sm" onclick="restoreTasks()">📂 복원</button>
         <button class="btn btn-outline btn-sm" onclick="exportCSV()">📊 CSV 내보내기</button>
@@ -4725,6 +4726,74 @@ window.afterLogin = async function() {
 };
 
 window.fuFilters = fuFilters;
+
+// ===================== PHASE 11 ADDITIONS (본인 업무 공유폴더 복원) =====================
+
+// 공유폴더의 "이름_업무.json"을 불러와 본인 업무를 복원/병합
+// silent=true: 조용히(로그인 자동복원), false: 토스트 안내
+window.restoreMyTasksFromFolder = async function(silent) {
+  if (cfg.storage !== 'folder') { if(!silent) showToast('공유폴더 모드에서만 사용할 수 있습니다.', 'warning'); return; }
+  if (!sharedFolderHandle) { if(!silent) showToast('먼저 공유폴더를 선택하세요.', 'error'); return; }
+  try {
+    const perm = await sharedFolderHandle.queryPermission({ mode:'readwrite' });
+    if (perm !== 'granted') {
+      const req = await sharedFolderHandle.requestPermission({ mode:'readwrite' });
+      if (req !== 'granted') { if(!silent) showToast('폴더 접근 권한이 필요합니다.', 'error'); return; }
+    }
+    const fileName = `${session.name}_업무.json`;
+    let data;
+    try {
+      const fh = await sharedFolderHandle.getFileHandle(fileName);
+      const file = await fh.getFile();
+      data = JSON.parse(await file.text());
+    } catch(e) {
+      if(!silent) showToast(`공유폴더에 '${fileName}' 파일이 없습니다.`, 'info');
+      return false;
+    }
+    const folderTasks = (data.tasks || []).filter(t => t.member === session.name);
+    if (!folderTasks.length) { if(!silent) showToast('복원할 내 업무가 없습니다.', 'info'); return false; }
+
+    // 병합: 기존(타인+본인) 유지, 폴더의 본인 업무 중 없는 id만 추가 (현재 편집 보존)
+    const existIds = new Set(tasks.map(t => t.id));
+    let added = 0;
+    folderTasks.forEach(t => { if (!existIds.has(t.id)) { tasks.push(t); added++; } });
+    saveLocal();
+    renderCurrentTab();
+    if (!silent) showToast(added>0 ? `내 업무 ${added}건을 복원했습니다.` : '이미 최신 상태입니다(추가 복원 없음).', 'success');
+    return true;
+  } catch(e) {
+    if(!silent) showToast('복원 실패: ' + e.message, 'error');
+    return false;
+  }
+};
+
+// 로그인 후: 폴더 연결되어 있고 내 업무가 비어 있으면 자동 복원
+const _p11AfterLogin = window.afterLogin;
+window.afterLogin = async function() {
+  await _p11AfterLogin();
+  if (cfg.storage === 'folder' && session.role === 'member') {
+    setTimeout(async () => {
+      const myCount = tasks.filter(t => t.member === session.name).length;
+      if (myCount === 0 && sharedFolderHandle) {
+        const ok = await restoreMyTasksFromFolder(true);
+        if (ok) showToast('공유폴더에서 내 업무를 자동 복원했습니다.', 'success');
+      }
+    }, 1800);
+  }
+};
+
+// 공유폴더를 새로 선택했을 때도 비어 있으면 자동 복원
+const _p11SelectFolder = window.selectSharedFolder;
+window.selectSharedFolder = async function() {
+  await _p11SelectFolder();
+  if (cfg.storage === 'folder' && session.role === 'member' && sharedFolderHandle) {
+    const myCount = tasks.filter(t => t.member === session.name).length;
+    if (myCount === 0) {
+      const ok = await restoreMyTasksFromFolder(true);
+      if (ok) showToast('공유폴더에서 내 업무를 자동 복원했습니다.', 'success');
+    }
+  }
+};
 
 // ===================== START =====================
 window.$ = $;
