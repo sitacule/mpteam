@@ -1322,6 +1322,9 @@ window.selectSharedFolder = async function() {
     showToast(`공유폴더 연결됨: ${handle.name}`, 'success');
     console.log('[선택] 완료:', handle.name);
 
+    // 연결 즉시 1회 동기화 — 총괄은 팀원 업무 즉시 표시
+    try { await syncFromSharedFolder(true); } catch(se) { console.warn('[선택] 즉시 동기화 실패', se); }
+
   } catch(e) {
     if (e.name === 'AbortError') {
       console.log('[선택] 사용자가 폴더 선택 취소');
@@ -1481,9 +1484,14 @@ window.syncFromSharedFolder = async function(silent) {
       console.error('[동기화] 폴더 순회 오류:', loopError);
     }
 
-    // 데이터 병합
+    // 데이터 병합 (id 기준 중복 제거 — 본인 파일이 양쪽에서 들어오는 경우 방지)
     const myTasks = tasks.filter(t => t.member === session.name);
-    tasks = [...myTasks, ...mergedOtherTasks];
+    const seenIds = new Set();
+    tasks = [...myTasks, ...mergedOtherTasks].filter(t => {
+      if (!t || !t.id) return true;
+      if (seenIds.has(t.id)) return false;
+      seenIds.add(t.id); return true;
+    });
     saveLocal();
 
     console.log(`[동기화] 완료: ${processedCount}개 파일, 총 ${tasks.length}건 업무`);
@@ -1554,6 +1562,8 @@ window.afterLogin = async function() {
           setSyncStatus('connected', savedHandle.name);
           updateFolderButtons();
           startAutoSync();
+          // 로그인 즉시 1회 동기화 — 총괄은 팀원 업무를 바로 확인
+          try { await syncFromSharedFolder(true); } catch(se) { console.warn('[로그인] 즉시 동기화 실패', se); }
         } else {
           console.log('[로그인] 폴더 권한 없음 (다시 선택 필요)');
           updateFolderButtons();
