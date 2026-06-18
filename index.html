@@ -538,7 +538,11 @@ body.readonly .ro-hide{display:none!important;}
     </div>
     <div class="form-group">
       <label>팀원 이름 (쉼표로 구분)</label>
-      <input type="text" id="setup-members" placeholder="예: 신해리, 이민준, 박소연, 최재현">
+      <input type="text" id="setup-members" placeholder="예: 신해리, 이민준, 박소연, 최재현" oninput="buildPartAssign()">
+    </div>
+    <div class="form-group">
+      <label>팀원 파트 지정 <span style="font-size:11px;color:var(--text-muted);">(지시사항 파트별 배정용 · 선택)</span></label>
+      <div id="setup-parts" style="display:flex;flex-direction:column;gap:6px;"></div>
     </div>
     <div class="form-group">
       <label>총괄 조회 비밀번호 (선택)</label>
@@ -899,6 +903,10 @@ let lastSyncTime = {};
 
 const CATEGORIES = ['회계','공시','청구','예산','자금','내부통제','재무','기획','AI·디지털','IT·정보보안','채용','인사·평가','급여·근태','법무','경영지원','기타'];
 
+// 지시사항 배정 대상: 공통(팀 전체) + 파트
+const FU_ALL = '팀 전체';
+const PARTS = ['재무파트','기획IT파트','인사/총무파트'];
+
 const CAT_CSS = {
   '회계':'cat-회계','재무':'cat-재무','공시':'cat-공시',
   '기획':'cat-기획','예산':'cat-예산','청구':'cat-청구',
@@ -1057,7 +1065,24 @@ function populateSetupForm() {
     if (cfg.firebase.projectId) $('fb-projectid').value = cfg.firebase.projectId;
     if (cfg.firebase.appId) $('fb-appid').value = cfg.firebase.appId;
   }
+  buildPartAssign();
 }
+
+// 설정: 팀원 이름 입력에 맞춰 파트 지정 셀렉트 생성
+window.buildPartAssign = function() {
+  const box = $('setup-parts'); if (!box) return;
+  const members = ($('setup-members').value||'').split(',').map(m=>m.trim()).filter(Boolean);
+  const saved = (cfg && cfg.memberParts) || {};
+  if (!members.length) { box.innerHTML = '<span style="font-size:12px;color:var(--text-muted);">팀원 이름을 먼저 입력하세요.</span>'; return; }
+  box.innerHTML = members.map(m => `
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span style="min-width:80px;font-size:13px;">${escHtml(m)}</span>
+      <select data-member="${escHtml(m)}" style="flex:1;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-family:inherit;">
+        <option value="">(미지정)</option>
+        ${PARTS.map(p=>`<option value="${p}"${saved[m]===p?' selected':''}>${p}</option>`).join('')}
+      </select>
+    </div>`).join('');
+};
 
 // ===================== SETUP =====================
 window.showSetup = function() {
@@ -1065,6 +1090,7 @@ window.showSetup = function() {
   $('login-modal').classList.add('hidden');
   $('app').classList.add('hidden');
   selectStorage(cfg.storage || 'folder');
+  buildPartAssign();
 };
 
 window.openSetupFromLogin = function() {
@@ -1081,7 +1107,11 @@ window.completeSetup = function() {
   if (!membersRaw) { alert('팀원 이름을 입력하세요.'); return; }
   const members = membersRaw.split(',').map(m => m.trim()).filter(Boolean);
   const orgName = ($('setup-orgname')||{}).value?.trim() || '';
-  cfg = { storage, orgName, leader, members, leaderPass, firebase:{} };
+  const memberParts = {};
+  document.querySelectorAll('#setup-parts select[data-member]').forEach(sel => {
+    if (sel.value) memberParts[sel.dataset.member] = sel.value;
+  });
+  cfg = { storage, orgName, leader, members, memberParts, leaderPass, firebase:{} };
   if (storage === 'firebase') {
     cfg.firebase = {
       apiKey: $('fb-apikey').value.trim(),
@@ -4442,9 +4472,16 @@ function fuOverdue(f) {
 }
 
 // ── CRUD ──
+function fuAssigneeOptions(selected) {
+  const members = cfg.members || [];
+  return `<optgroup label="공통"><option value="${FU_ALL}"${selected===FU_ALL?' selected':''}>${FU_ALL}</option></optgroup>`
+    + `<optgroup label="파트">${PARTS.map(p=>`<option value="${p}"${selected===p?' selected':''}>${p}</option>`).join('')}</optgroup>`
+    + `<optgroup label="팀원">${members.map(m=>`<option value="${escHtml(m)}"${selected===m?' selected':''}>${escHtml(m)}</option>`).join('')}</optgroup>`;
+}
 window.openFollowup = function(id) {
   const members = cfg.members || [];
-  $('fu-assignee').innerHTML = members.map(m=>`<option value="${escHtml(m)}">${escHtml(m)}</option>`).join('');
+  const f0 = id ? followups.find(x=>x.id===id) : null;
+  $('fu-assignee').innerHTML = fuAssigneeOptions(f0 ? f0.assignee : (members[0]||''));
   // 회의명 자동완성: 기존 회의명 목록
   const meetings = [...new Set(followups.map(f=>f.meeting).filter(Boolean))];
   $('fu-meeting-list').innerHTML = meetings.map(mt=>`<option value="${escHtml(mt)}"></option>`).join('');
@@ -4572,13 +4609,15 @@ window.renderFollowups = function(cont) {
 
   const isLeader = session.role === 'leader';
   const view = window._fuView || 'month';
+  const myPart = (cfg.memberParts||{})[session.name] || null;
+  const mineTargets = [session.name, FU_ALL].concat(myPart?[myPart]:[]);
   let list = [...followups];
-  if (!isLeader) list = list.filter(f => f.assignee === session.name);
+  if (!isLeader) list = list.filter(f => mineTargets.includes(f.assignee));
   if (isLeader && fuFilters.assignee !== 'all') list = list.filter(f => f.assignee === fuFilters.assignee);
   if (fuFilters.status !== 'all') list = list.filter(f => f.status === fuFilters.status);
   if (fuFilters.issuer !== 'all') list = list.filter(f => (f.issuer||'') === fuFilters.issuer);
 
-  const total = (isLeader?followups:followups.filter(f=>f.assignee===session.name));
+  const total = (isLeader?followups:followups.filter(f=>mineTargets.includes(f.assignee)));
   const cntWait = total.filter(f=>f.status==='대기').length;
   const cntProg = total.filter(f=>f.status==='진행중').length;
   const cntDone = total.filter(f=>f.status==='완료').length;
@@ -4590,7 +4629,7 @@ window.renderFollowups = function(cont) {
   if (list.length === 0) {
     body = `<div class="card"><div class="empty-state"><div class="icon">📌</div><p>${isLeader?'등록된 지시사항이 없습니다. [+ 지시사항 등록]으로 추가하세요.':'나에게 지정된 지시사항이 없습니다.'}</p></div></div>`;
   } else if (view === 'assignee') {
-    const targets = isLeader ? (cfg.members||[]) : [session.name];
+    const targets = isLeader ? [FU_ALL, ...PARTS, ...(cfg.members||[])] : mineTargets;
     body = targets.map(m => {
       const items = list.filter(f=>f.assignee===m);
       if (!items.length) return '';
@@ -4637,6 +4676,8 @@ window.renderFollowups = function(cont) {
     <div class="filter-bar" style="margin-bottom:16px;">
       ${isLeader?`<select id="fu-f-assignee" onchange="fuFilters.assignee=this.value;renderFollowups($('content'))">
         <option value="all">전체 담당자</option>
+        <option value="${FU_ALL}"${fuFilters.assignee===FU_ALL?' selected':''}>${FU_ALL}</option>
+        ${PARTS.map(p=>`<option value="${p}"${fuFilters.assignee===p?' selected':''}>${p}</option>`).join('')}
         ${(cfg.members||[]).map(m=>`<option value="${m}"${fuFilters.assignee===m?' selected':''}>${escHtml(m)}</option>`).join('')}
       </select>`:''}
       <select id="fu-f-issuer" onchange="fuFilters.issuer=this.value;renderFollowups($('content'))">
