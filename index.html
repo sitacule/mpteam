@@ -226,6 +226,14 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:var
 .pptx-task-item .task-prog.p100{color:var(--success);}
 .pptx-task-item .task-prog.p50{color:var(--warning);}
 .pptx-task-item .task-note{background:#FFFBEB;border:1px solid #F6E05E;border-radius:4px;padding:3px 8px;font-size:12px;color:#744210;margin-top:4px;display:inline-block;}
+/* 보고서 항목 제외 */
+.report-ex-btn{margin-left:8px;font-size:10px;padding:1px 7px;border-radius:10px;border:1px solid var(--border);background:#fff;color:var(--text-muted);cursor:pointer;font-family:inherit;vertical-align:middle;}
+.report-ex-btn:hover{border-color:var(--accent);color:var(--accent);}
+.report-ex-btn.included{border-color:var(--success);color:var(--success);}
+.pptx-task-item.report-excluded{opacity:.5;}
+.pptx-task-item.report-excluded .task-name{text-decoration:line-through;text-decoration-color:var(--text-muted);}
+.pptx-task-item.report-excluded .report-ex-btn{text-decoration:none;}
+@media print{ .pptx-task-item.report-excluded{display:none!important;} .report-ex-btn{display:none!important;} }
 
 /* Weekly report */
 .report-wrap{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);}
@@ -2986,8 +2994,8 @@ window.renderMonthlyReport = function(cont) {
   const pd = new Date(py, pm-2, 1);
   const prevMonth = `${pd.getFullYear()}-${String(pd.getMonth()+1).padStart(2,'0')}`;
 
-  // 팀 전체 집계
-  const allMonthTasks = tasks.filter(t => targetMembers.includes(t.member) && (t.date||'').startsWith(mrMonth));
+  // 팀 전체 집계 (보고서에서 제외(reportExcluded)된 항목은 요약 수치에서도 빼서 실제 보고 내용과 일치)
+  const allMonthTasks = tasks.filter(t => targetMembers.includes(t.member) && (t.date||'').startsWith(mrMonth) && !t.reportExcluded);
   const totalN = allMonthTasks.length;
   const doneN = allMonthTasks.filter(t=>t.status==='처리완료').length;
   const overdueN = allMonthTasks.filter(isOverdue).length;
@@ -2995,7 +3003,7 @@ window.renderMonthlyReport = function(cont) {
   const jDone = jungjeomAll.filter(t=>t.status==='처리완료').length;
   const curRate = totalN ? Math.round(doneN/totalN*100) : 0;
   const prevRate = calcMonthRate(targetMembers, prevMonth);
-  const ikmolWarning = tasks.filter(t => targetMembers.includes(t.member) && t.taskType==='익월' && (t.date||'').startsWith(mrMonth)).length === 0;
+  const ikmolWarning = tasks.filter(t => targetMembers.includes(t.member) && t.taskType==='익월' && (t.date||'').startsWith(mrMonth) && !t.reportExcluded).length === 0;
 
   // 3대 성과: 완료된 중점업무 우선, 없으면 완료된 일반업무
   const top3 = [
@@ -3072,11 +3080,13 @@ window.renderMonthlyReport = function(cont) {
           const p=parseInt(t.progress)||0;
           const progCls=p>=100?'p100':p>=50?'p50':'';
           const od=isOverdue(t);
-          return `<div class="pptx-task-item">
+          const canToggle = session.role==='leader' || t.member===session.name;
+          const exBtn = canToggle ? fuExcludeBtn(t) : '';
+          return `<div class="pptx-task-item${t.reportExcluded?' report-excluded':''}">
             <div class="task-name">
               ${od?'<span style="color:var(--accent);">⚠️기한초과</span> ':''}${escHtml(t.name)}
               <span class="task-prog ${progCls}">${p}%</span>
-              ${statusBadge(t.status)}
+              ${statusBadge(t.status)}${exBtn}
             </div>
             ${t.desc?`<div class="task-desc">${escHtml(t.desc)}</div>`:''}
             ${t.note?`<div class="task-note">💬 ${escHtml(t.note)}</div>`:''}
@@ -3095,10 +3105,12 @@ window.renderMonthlyReport = function(cont) {
       if (!list.length) return '';
       const groups=groupByCat(list);
       const html=Object.entries(groups).map(([cat,items])=>{
-        const taskHTML=items.map(t=>`<div class="pptx-task-item">
-          <div class="task-name">${escHtml(t.name)}${t.due?` <span style="font-size:11px;color:var(--text-muted);">(~${fmt(t.due)})</span>`:''}</div>
+        const taskHTML=items.map(t=>{
+          const canToggle = session.role==='leader' || t.member===session.name;
+          return `<div class="pptx-task-item${t.reportExcluded?' report-excluded':''}">
+          <div class="task-name">${escHtml(t.name)}${t.due?` <span style="font-size:11px;color:var(--text-muted);">(~${fmt(t.due)})</span>`:''}${canToggle?fuExcludeBtn(t):''}</div>
           ${t.desc?`<div class="task-desc">${escHtml(t.desc)}</div>`:''}
-        </div>`).join('');
+        </div>`;}).join('');
         return `<div class="pptx-cat-group"><div class="pptx-cat-label"><span>[${escHtml(cat)}]</span></div>${taskHTML}</div>`;
       }).join('');
       return `<div class="pptx-section"><div class="pptx-section-label ikmol">익월 업무 계획</div>${html}</div>`;
@@ -4807,6 +4819,28 @@ window.selectSharedFolder = async function() {
       if (ok) showToast('공유폴더에서 내 업무를 자동 복원했습니다.', 'success');
     }
   }
+};
+
+// ===================== PHASE 12 ADDITIONS (월간보고 항목 제외) =====================
+
+// 보고서 항목 제외/포함 토글 버튼
+function fuExcludeBtn(t) {
+  return t.reportExcluded
+    ? `<button class="report-ex-btn included" onclick="toggleReportExclude('${t.id}')" title="보고서에 다시 포함">↩ 포함</button>`
+    : `<button class="report-ex-btn" onclick="toggleReportExclude('${t.id}')" title="이 항목을 보고서에서 제외">✕ 제외</button>`;
+}
+
+window.toggleReportExclude = function(id) {
+  const t = tasks.find(x => x.id === id);
+  if (!t) return;
+  // 담당자 본인 또는 총괄만 제외 가능
+  if (session.role !== 'leader' && t.member !== session.name) {
+    showToast('본인 업무만 제외할 수 있습니다.', 'error'); return;
+  }
+  const next = !t.reportExcluded;
+  upd(id, { reportExcluded: next });   // 저장+재렌더
+  if (typeof autoSendIfFolder === 'function') autoSendIfFolder();
+  showToast(next ? '보고서에서 제외했습니다.' : '보고서에 다시 포함했습니다.', 'info');
 };
 
 // ===================== START =====================
