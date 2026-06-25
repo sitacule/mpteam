@@ -172,7 +172,9 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:var
 .eisen .xaxis span{position:relative;z-index:1;background:var(--bg);padding:0 8px;}
 .eisen .q{border-radius:10px;padding:14px;min-height:170px;border:1px solid var(--border);display:flex;flex-direction:column;}
 .eisen .q .q-head{font-size:13px;font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:6px;}
-.eisen .q .q-sub{font-size:11px;color:var(--text-muted);margin-bottom:10px;}
+.eisen .q .q-sub{font-size:11px;color:var(--text-muted);margin-bottom:2px;}
+.eisen .q .q-num{font-size:15px;font-weight:800;margin-right:2px;}
+.eisen .q .q-ex{font-size:11px;color:var(--text-muted);font-style:italic;margin-bottom:10px;padding-bottom:8px;border-bottom:1px dashed var(--border);}
 .eisen .q .q-body{flex:1;overflow-y:auto;max-height:240px;}
 .eisen .q-A{background:#FFF5F5;border-color:#FEB2B2;}
 .eisen .q-B{background:#FFFAF0;border-color:#FBD38D;}
@@ -1871,11 +1873,12 @@ function buildMatrix(taskList) {
 function buildQuadrant(taskList) {
   const groups = {A:[],B:[],C:[],D:[]};
   taskList.forEach(t => { (groups[t.priority] || groups.D).push(t); });
+  // ❶~❹ 처리 우선순위 번호 + 동사형 라벨 + 예시 (아이젠하워 Do-Plan-Delegate-Delete)
   const meta = {
-    A:{tag:'P A', title:'긴급 ⋅ 중요', sub:'지금 바로 실행'},
-    B:{tag:'P B', title:'중요 (덜 긴급)', sub:'계획 세워 처리'},
-    C:{tag:'P C', title:'긴급 (덜 중요)', sub:'빠르게 처리 ⋅ 협조요청'},
-    D:{tag:'P D', title:'그 외', sub:'여유 있을 때 / 정리'}
+    A:{tag:'❶', title:'즉시 실행', sub:'긴급+중요', ex:'예: 마감 임박 보고, 당일 현안 처리'},
+    B:{tag:'❷', title:'계획 수립', sub:'중요+덜 긴급', ex:'예: 분기 전략, 예산안 설계, 개선 과제'},
+    C:{tag:'❸', title:'위임·협조', sub:'긴급+덜 중요', ex:'예: 자료 취합, 일정 조율, 단순 요청'},
+    D:{tag:'❹', title:'보류·정리', sub:'덜 긴급+덜 중요', ex:'예: 참고자료 정리, 백로그, 추후 검토'}
   };
   function cell(p) {
     const list = groups[p];
@@ -1886,8 +1889,9 @@ function buildQuadrant(taskList) {
       </div>`
     ).join('') || `<div class="eisen-empty">해당 없음</div>`;
     return `<div class="q q-${p}">
-      <div class="q-head"><span class="q-tag">${meta[p].tag}</span> ${meta[p].title} <span style="font-weight:400;color:var(--text-muted);">(${list.length})</span></div>
+      <div class="q-head"><span class="q-num">${meta[p].tag}</span> ${meta[p].title} <span style="font-weight:400;color:var(--text-muted);">(${list.length})</span></div>
       <div class="q-sub">${meta[p].sub}</div>
+      <div class="q-ex">${meta[p].ex}</div>
       <div class="q-body">${items}</div>
     </div>`;
   }
