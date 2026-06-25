@@ -410,6 +410,17 @@ body.readonly .task-table td button,
 body.readonly .ro-hide{display:none!important;}
 .ro-banner{background:#FAF5FF;border:1px solid #D6BCFA;color:#553C9A;border-radius:var(--radius);padding:10px 16px;font-size:13px;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
 
+/* 업무 현황 조회(viewer): 관리 버튼 숨김(폴더선택·동기화·인쇄·CSV는 유지) */
+body.viewer-mode .add-form,
+body.viewer-mode .data-mgmt,
+body.viewer-mode .task-table td button,
+body.viewer-mode .report-ex-btn,
+body.viewer-mode .action-card button,
+body.viewer-mode .section-header-row .btn-accent,
+body.viewer-mode .member-edit-only{display:none!important;}
+body.viewer-mode .task-table td select,
+body.viewer-mode #send-btn{pointer-events:none;opacity:.6;}
+
 /* Browser compat banner */
 .compat-banner{background:#FFF5F5;border:1px solid #FC8181;color:#C53030;border-radius:var(--radius);padding:10px 16px;font-size:12px;margin:0 24px 0;display:flex;align-items:center;gap:8px;}
 
@@ -589,6 +600,7 @@ body.readonly .ro-hide{display:none!important;}
       <div class="radio-group">
         <label><input type="radio" name="role" value="member" checked id="role-member" onchange="onRoleChange()"> 👤 팀원</label>
         <label><input type="radio" name="role" value="leader" id="role-leader" onchange="onRoleChange()"> 📋 총괄</label>
+        <label><input type="radio" name="role" value="viewer" id="role-viewer" onchange="onRoleChange()"> 🔎 업무 현황 조회</label>
         <label><input type="radio" name="role" value="exec" id="role-exec" onchange="onRoleChange()"> 🛡️ 관리자</label>
       </div>
     </div>
@@ -599,6 +611,12 @@ body.readonly .ro-hide{display:none!important;}
     <div id="leader-pass-area" class="form-group hidden">
       <label>총괄 비밀번호</label>
       <input type="password" id="login-pass" placeholder="비밀번호 입력">
+    </div>
+    <div id="viewer-area" class="form-group hidden">
+      <label>업무 현황 조회 (임원·대표이사)</label>
+      <div style="background:#EBF8FF;border:1px solid #90CDF4;border-radius:6px;padding:10px 14px;font-size:12px;color:#2C5282;">
+        🔎 총괄과 동일한 화면·내용을 <strong>열람 전용</strong>으로 조회합니다. (수정·삭제 불가)
+      </div>
     </div>
     <div id="exec-area" class="form-group hidden">
       <label>관리자 종합 조회</label>
@@ -1622,7 +1640,7 @@ window.init = function() {
 window.buildTabs = function() {
   const tabsEl = $('tabs');
   tabsEl.innerHTML = '';
-  const defs = session.role === 'leader'
+  const defs = (session.role === 'leader' || session.role === 'viewer')
     ? ['🏠 대시보드','📋 전체현황','📊 우선순위별','📅 월별현황','📝 주간보고','📑 월간보고','📌 지시사항']
     : ['📋 내 업무','📊 우선순위별','📅 월별현황','📝 주간보고','📑 월간보고','📌 지시사항'];
   defs.forEach((label, i) => {
@@ -3488,6 +3506,8 @@ window.onRoleChange = function() {
   $('leader-pass-area').classList.toggle('hidden', role !== 'leader');
   const execArea = $('exec-area');
   if (execArea) execArea.classList.toggle('hidden', role !== 'exec');
+  const viewerArea = $('viewer-area');
+  if (viewerArea) viewerArea.classList.toggle('hidden', role !== 'viewer');
 };
 
 // ── [28] 로그인 (임원 처리) ──
@@ -3500,6 +3520,8 @@ window.doLogin = function() {
     session = { role:'leader', name: cfg.leader };
   } else if (role === 'exec') {
     session = { role:'exec', name: '관리자' };
+  } else if (role === 'viewer') {
+    session = { role:'viewer', name: '업무현황조회' };
   } else {
     const sel = document.querySelector('#member-chips .chip.selected');
     if (!sel) { alert('팀원을 선택하세요.'); return; }
@@ -3845,7 +3867,7 @@ window.afterLogin = async function() {
   if (session.role === 'member') generateRecurringTasks();
   checkBrowserCompat();
   // 사용자 역할 표시 보정
-  const labelMap = { leader:'총괄', exec:'관리자', member:'팀원' };
+  const labelMap = { leader:'총괄', exec:'관리자', viewer:'업무 현황 조회', member:'팀원' };
   // 총괄·관리자는 개인 이름 없이 역할만 표시, 팀원은 이름+역할
   $('user-info').textContent = (session.role==='member')
     ? `👤 ${session.name} (팀원)`
@@ -4420,6 +4442,9 @@ window.renderCurrentTab = function() {
   const _formSnap = captureAddForm();   // 입력 중 폼 상태 스냅샷
 
   // ① 역할·탭별 디스패치
+  // 업무 현황 조회(viewer)는 렌더링 동안 총괄과 동일하게 처리(내용 동일), 권한은 별도 가드로 차단
+  const _viewer = session.role === 'viewer';
+  if (_viewer) session.role = 'leader';
   if (session.role === 'exec') {
     renderExec(cont);
   } else if (session.role === 'leader') {
@@ -4427,14 +4452,17 @@ window.renderCurrentTab = function() {
   } else {
     [renderMy, renderMyPriority, renderMyMonthly, initWeekly, initMonthlyReport, renderFollowups][currentTab]?.(cont);
   }
+  if (_viewer) session.role = 'viewer';
 
   restoreAddForm(_formSnap);             // 작성 중이던 입력값·커서 복원
 
   // ② 읽기 전용 배너
-  if (READONLY && !cont.querySelector('.ro-banner')) {
+  if ((READONLY || _viewer) && !cont.querySelector('.ro-banner')) {
     const b = document.createElement('div');
     b.className = 'ro-banner';
-    b.innerHTML = '👁️ <strong>읽기 전용 모드</strong> — 이 화면은 열람용이며 수정할 수 없습니다.';
+    b.innerHTML = _viewer
+      ? '🔎 <strong>업무 현황 조회(열람 전용)</strong> — 총괄과 동일한 현황을 조회합니다. 수정·삭제는 불가합니다.'
+      : '👁️ <strong>읽기 전용 모드</strong> — 이 화면은 열람용이며 수정할 수 없습니다.';
     cont.insertBefore(b, cont.firstChild);
   }
 
@@ -4844,6 +4872,31 @@ window.toggleReportExclude = function(id) {
   upd(id, { reportExcluded: next });   // 저장+재렌더
   if (typeof autoSendIfFolder === 'function') autoSendIfFolder();
   showToast(next ? '보고서에서 제외했습니다.' : '보고서에 다시 포함했습니다.', 'info');
+};
+
+// ===================== PHASE 13 ADDITIONS (업무 현황 조회 권한) =====================
+
+// 열람 전용(viewer) 시 데이터 변경 동작 차단
+['openEdit','del','saveEdit','toggleConfirm','toggleReportExclude',
+ 'openFollowup','saveFollowup','delFollowup','setFollowupStatus',
+ 'copyTask','addTask','archiveOldTasks','restoreTasks'].forEach(fn => {
+  const orig = window[fn];
+  if (typeof orig === 'function') {
+    window[fn] = function() {
+      if (session.role === 'viewer') {
+        showToast('업무 현황 조회 권한은 열람 전용입니다.', 'info');
+        return;
+      }
+      return orig.apply(this, arguments);
+    };
+  }
+});
+
+// 로그인 후 viewer 모드 클래스 토글(관리 버튼 숨김) — 폴더선택/동기화는 유지
+const _p13AfterLogin = window.afterLogin;
+window.afterLogin = async function() {
+  await _p13AfterLogin();
+  document.body.classList.toggle('viewer-mode', session.role === 'viewer');
 };
 
 // ===================== START =====================
