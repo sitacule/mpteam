@@ -3846,7 +3846,10 @@ window.afterLogin = async function() {
   checkBrowserCompat();
   // 사용자 역할 표시 보정
   const labelMap = { leader:'총괄', exec:'관리자', member:'팀원' };
-  $('user-info').textContent = `👤 ${session.name} (${labelMap[session.role]||'팀원'})`;
+  // 총괄·관리자는 개인 이름 없이 역할만 표시, 팀원은 이름+역할
+  $('user-info').textContent = (session.role==='member')
+    ? `👤 ${session.name} (팀원)`
+    : `👤 ${labelMap[session.role]||'팀원'}`;
   // 최초 1회 온보딩 투어
   if (!READONLY && session.role === 'member' && !localStorage.getItem('wrs_tour_done')) {
     setTimeout(startTour, 600);
@@ -3858,7 +3861,7 @@ const _p3ShowLogin = window.showLogin;
 window.showLogin = function() {
   _p3ShowLogin();
   const sub = $('login-subtitle');
-  if (sub) sub.textContent = `Work Trace · ${cfg.orgName||'경영기획팀'} | 총괄: ${cfg.leader} | 팀원: ${(cfg.members||[]).join(', ')}`;
+  if (sub) sub.textContent = `Work Trace · ${cfg.orgName||'경영기획팀'} | 총괄 | 팀원: ${(cfg.members||[]).join(', ')}`;
 };
 
 // ── init 확장 (읽기전용 모드 + 브랜딩) ──
