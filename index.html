@@ -628,15 +628,8 @@ body.viewer-mode #send-btn{pointer-events:none;opacity:.6;}
         🛡️ 여러 팀의 데이터를 통합 조회합니다. 로그인 후 각 팀의 백업(JSON) 파일을 불러오세요.
       </div>
     </div>
-    <div class="form-group">
-      <label>설정 파일 불러오기 (선택)</label>
-      <div style="display:flex;gap:8px;">
-        <input type="file" id="import-login-file" accept=".json" style="flex:1;padding:6px;">
-        <button class="btn btn-outline btn-sm" onclick="importLoginFile()">📂 불러오기</button>
-      </div>
-    </div>
     <div style="display:flex;gap:10px;justify-content:space-between;margin-top:24px;flex-wrap:wrap;">
-      <button class="btn btn-ghost btn-sm" onclick="openSetupFromLogin()">⚙️ 설정 변경</button>
+      <button class="btn btn-ghost btn-sm" onclick="openSetupFromLogin()" title="총괄만 가능 (비밀번호 필요)">⚙️ 설정 변경 🔒</button>
       <button class="btn btn-primary" onclick="doLogin()">로그인 →</button>
     </div>
   </div>
