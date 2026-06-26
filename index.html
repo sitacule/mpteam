@@ -645,8 +645,11 @@ body.viewer-mode #send-btn{pointer-events:none;opacity:.6;}
 <!-- Share Link Modal -->
 <div id="share-modal" class="modal-overlay hidden">
   <div class="modal">
-    <h2>🔗 설정 공유</h2>
-    <p class="subtitle">아래 링크를 팀원들에게 공유하면 설정이 자동으로 적용됩니다.</p>
+    <h2>🔗 팀 접속(초대) 링크</h2>
+    <p class="subtitle">이 링크를 팀원에게 공유하면 <strong>같은 설정(팀원·파트·저장방식·Firebase 키)</strong>으로 바로 시작합니다. 팀원은 링크 접속 → 본인 이름 선택 → 업무 입력만 하면 됩니다.</p>
+    <div id="share-fb-note" class="hidden" style="background:#E6FFFA;border:1px solid #81E6D9;border-radius:6px;padding:10px 14px;font-size:13px;color:#234E52;margin-bottom:12px;">
+      ☁️ Firebase 모드: 이 링크에 <strong>Firebase 키까지 포함</strong>되어 있어, 팀원이 링크만 열면 실시간 모드로 자동 연결됩니다. (총괄이 설정을 바꾸면 자동 반영)
+    </div>
     <div id="share-folder-note" class="hidden" style="background:#EBF4FF;border:1px solid #90CDF4;border-radius:6px;padding:10px 14px;font-size:13px;color:#2C5282;margin-bottom:12px;">
       📁 공유폴더 모드: 팀원들에게 아래 링크를 공유하거나, 공유폴더에 <strong>team_config.json</strong>을 저장하세요.
     </div>
@@ -1054,6 +1057,8 @@ window.openShareModal = function() {
   const isFolder = cfg.storage === 'folder';
   $('share-folder-note').classList.toggle('hidden', !isFolder);
   $('save-team-config-btn').classList.toggle('hidden', !isFolder);
+  const fbNote = $('share-fb-note');
+  if (fbNote) fbNote.classList.toggle('hidden', cfg.storage !== 'firebase');
   $('share-modal').classList.remove('hidden');
 };
 
@@ -1157,6 +1162,13 @@ window.completeSetup = function() {
     };
   }
   localStorage.setItem('wrs_cfg', JSON.stringify(cfg));
+  // Firebase 모드에서 이미 연결돼 있으면 팀 설정을 즉시 업로드(설정 변경 반영)
+  if (storage === 'firebase' && _fbRefs && _fbRefs.cfgDocRef) {
+    _fbRefs.setDoc(_fbRefs.cfgDocRef, {
+      orgName: cfg.orgName||'', leader: cfg.leader||'', leaderPass: cfg.leaderPass||'',
+      members: cfg.members||[], memberParts: cfg.memberParts||{}, updatedAt: Date.now()
+    }).catch(e=>console.warn('[Firebase] 팀 설정 업로드 실패', e));
+  }
   $('setup-modal').classList.add('hidden');
   openShareModal();
   showLogin();
@@ -1246,7 +1258,34 @@ window.initFirebase = async function() {
       },
       err => { console.error('[Firebase] followups 읽기 오류:', err); }
     );
-    _fbRefs = { db, collection, doc, setDoc, deleteDoc, colRef, fuColRef };
+    // 팀 설정(config) 실시간 동기화 — 총괄이 세팅하면 팀원 전원에게 반영
+    const cfgDocRef = doc(db, 'meta', 'config');
+    onSnapshot(cfgDocRef,
+      snap => {
+        if (!snap.exists()) return;
+        const r = snap.data() || {};
+        let changed = false;
+        ['orgName','leader','leaderPass'].forEach(k => { if (r[k] !== undefined && r[k] !== cfg[k]) { cfg[k] = r[k]; changed = true; } });
+        if (Array.isArray(r.members) && JSON.stringify(r.members) !== JSON.stringify(cfg.members||[])) { cfg.members = r.members; changed = true; }
+        if (r.memberParts && JSON.stringify(r.memberParts) !== JSON.stringify(cfg.memberParts||{})) { cfg.memberParts = r.memberParts; changed = true; }
+        if (changed) {
+          localStorage.setItem('wrs_cfg', JSON.stringify(cfg));
+          console.log('[Firebase] 팀 설정 동기화 적용');
+          const lm = document.getElementById('login-modal');
+          if (lm && !lm.classList.contains('hidden')) showLogin();  // 로그인 화면이면 팀원 목록 갱신
+        }
+      },
+      err => { console.warn('[Firebase] config 읽기 오류', err); }
+    );
+    // 총괄이면 현재 로컬 설정을 팀 설정 원본으로 업로드
+    if (session.role === 'leader') {
+      setDoc(cfgDocRef, {
+        orgName: cfg.orgName||'', leader: cfg.leader||'', leaderPass: cfg.leaderPass||'',
+        members: cfg.members||[], memberParts: cfg.memberParts||{}, updatedAt: Date.now()
+      }).then(()=>console.log('[Firebase] 팀 설정 업로드 완료'))
+        .catch(e=>console.warn('[Firebase] 팀 설정 업로드 실패', e));
+    }
+    _fbRefs = { db, collection, doc, setDoc, deleteDoc, colRef, fuColRef, cfgDocRef };
     console.log('[Firebase] 초기화 완료. project:', cfg.firebase.projectId);
     return true;
   } catch(e) {
