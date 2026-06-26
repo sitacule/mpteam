@@ -508,7 +508,7 @@ body.viewer-mode #send-btn{pointer-events:none;opacity:.6;}
 <body>
 
 <!-- Setup Modal -->
-<div id="setup-modal" class="modal-overlay">
+<div id="setup-modal" class="modal-overlay hidden">
   <div class="modal">
     <h2>📊 Work Trace 시작하기</h2>
     <div style="background:linear-gradient(135deg,#1A3A5C,#2A5080);color:#fff;border-radius:8px;padding:14px 18px;margin-bottom:18px;">
@@ -1652,6 +1652,9 @@ window.saveTeamConfigToFolder = async function() {
 // ===================== AFTER LOGIN =====================
 window.afterLogin = async function() {
   console.log('[로그인] afterLogin 시작');
+  // 새로고침(세션 복원)으로 진입해도 설정/로그인 모달이 겹쳐 보이지 않도록 닫음
+  $('setup-modal')?.classList.add('hidden');
+  $('login-modal')?.classList.add('hidden');
   $('app').classList.remove('hidden');
   $('user-info').textContent = `👤 ${session.name} (${session.role==='leader'?'총괄 조회':'팀원'})`;
   updateFolderButtons();
