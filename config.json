@@ -1,0 +1,12 @@
+{
+  "storage": "firebase",
+  "orgName": "경영기획팀",
+  "leader": "조현준",
+  "members": ["성연재", "신해리", "박재룡", "서준"],
+  "memberParts": {},
+  "firebase": {
+    "apiKey": "AIzaSyD7eIywguLk5c5vsMPp2uE3rtW7lJ-7qqs",
+    "projectId": "worktrace-23ba8",
+    "appId": "1:543950921167:web:62b7dc2ea9a1aa454346ba"
+  }
+}
