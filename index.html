@@ -72,7 +72,7 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:var
 
 /* Header */
 #header{background:var(--primary);color:#fff;padding:0 16px;display:flex;align-items:center;height:56px;gap:10px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,0.2);}
-#header h1{font-size:17px;font-weight:700;white-space:nowrap;}
+#header h1{font-size:17px;font-weight:700;white-space:nowrap;display:flex;align-items:center;}
 #header .spacer{flex:1;}
 #user-info{font-size:13px;opacity:.85;white-space:nowrap;}
 .header-btn{background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:#fff;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:13px;font-family:inherit;white-space:nowrap;}
@@ -3590,12 +3590,11 @@ let READONLY = false;        // [30] 읽기 전용 모드
 let execTeams = [];          // [29] 임원 다중팀 데이터
 
 // ── [27] 브랜딩 적용 ──
-// 헤더 로고: logo.png 가 있으면 그 이미지를, 없으면 회사명 텍스트 CI 표시
+// 헤더: 롯데 심볼(logo.png) + Work Trace(크게·굵게). logo.png 없으면 임시 마크 표시
 window.brandFallback = function(img) {
   const span = document.createElement('span');
-  span.style.cssText = 'display:inline-flex;align-items:center;gap:7px;';
-  span.innerHTML = '<span style="background:#E2231A;color:#fff;font-weight:800;width:24px;height:24px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">L</span>'
-    + '<span style="font-weight:700;font-size:15px;letter-spacing:-0.5px;white-space:nowrap;">롯데미래전략연구소</span>';
+  span.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:8px;background:#E2231A;color:#fff;font-weight:800;font-size:16px;vertical-align:middle;';
+  span.textContent = 'L';
   if (img && img.replaceWith) img.replaceWith(span);
 };
 function applyBranding() {
@@ -3603,8 +3602,9 @@ function applyBranding() {
   const titleEl = $('app-title');
   if (!titleEl) return;
   titleEl.innerHTML =
-    `<img src="logo.png" alt="롯데미래전략연구소" style="height:30px;width:auto;vertical-align:middle;background:#fff;border-radius:5px;padding:2px 6px;" onerror="brandFallback(this)">`
-    + `<span style="font-weight:400;font-size:12px;opacity:.6;margin-left:10px;white-space:nowrap;">Work Trace · ${escHtml(org)}</span>`;
+    `<img src="logo.png" alt="롯데 심볼" style="height:32px;width:auto;vertical-align:middle;" onerror="brandFallback(this)">`
+    + `<span style="font-weight:800;font-size:21px;letter-spacing:-0.3px;margin-left:10px;vertical-align:middle;color:#fff;">Work Trace</span>`
+    + `<span style="font-weight:400;font-size:12px;opacity:.6;margin-left:9px;vertical-align:middle;white-space:nowrap;">${escHtml(org)}</span>`;
 }
 
 // ── [28] 역할 전환 (임원 추가) ──
