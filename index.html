@@ -1223,21 +1223,37 @@ window.initFirebase = async function() {
     const app = existingApps.find(a => a.name === 'wrs-app') || initializeApp(fbCfg, 'wrs-app');
     db = getFirestore(app);
     const colRef = collection(db, 'tasks');
-    const q = query(colRef, orderBy('createdAt','asc'));
-    onSnapshot(q, snap => {
-      tasks = snap.docs.map(d => ({ id:d.id, ...d.data() }));
-      renderCurrentTab();
-    });
+    // orderBy를 빼서 'createdAt' 없는 문서도 모두 표시(정렬은 클라이언트에서) — 업로드한 업무가 안 보이던 문제 방지
+    onSnapshot(colRef,
+      snap => {
+        tasks = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+        tasks.sort((a,b) => (a.createdAt||0) - (b.createdAt||0));
+        console.log('[Firebase] tasks 수신:', tasks.length, '건');
+        renderCurrentTab();
+      },
+      err => {
+        console.error('[Firebase] tasks 읽기 오류:', err);
+        showToast('Firestore 읽기 오류: ' + err.message + ' (보안 규칙을 확인하세요)', 'error');
+      }
+    );
     // 지시사항(follow-up) 실시간 구독
     const fuColRef = collection(db, 'followups');
-    onSnapshot(fuColRef, snap => {
-      followups = snap.docs.map(d => ({ id:d.id, ...d.data() }));
-      saveFollowupsLocal();
-      if (currentTab != null) renderCurrentTab();
-    });
+    onSnapshot(fuColRef,
+      snap => {
+        followups = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+        saveFollowupsLocal();
+        if (currentTab != null) renderCurrentTab();
+      },
+      err => { console.error('[Firebase] followups 읽기 오류:', err); }
+    );
     _fbRefs = { db, collection, doc, setDoc, deleteDoc, colRef, fuColRef };
+    console.log('[Firebase] 초기화 완료. project:', cfg.firebase.projectId);
     return true;
-  } catch(e) { console.error('Firebase error:', e); return false; }
+  } catch(e) {
+    console.error('Firebase error:', e);
+    showToast('Firebase 초기화 실패: ' + e.message + ' (키 값을 확인하세요)', 'error');
+    return false;
+  }
 };
 
 // ===================== INDEXEDDB FOR FOLDER HANDLE =====================
@@ -4950,8 +4966,12 @@ async function uploadTasksToFirestore(taskList) {
     } catch(e) { fail++; console.error('[마이그레이션] 업로드 실패', e, raw); }
   }
   const members = [...new Set(taskList.map(t => t && t.member).filter(Boolean))];
-  showToast(`Firebase 업로드 완료: ${ok}건${fail?` / 실패 ${fail}건`:''} · 담당자 ${members.length}명`, fail?'warning':'success');
-  console.log('[마이그레이션] 업로드', { uploaded:ok, fail, members });
+  if (fail > 0 && ok === 0) {
+    showToast(`업로드 실패 ${fail}건 — Firestore 보안 규칙(쓰기 권한)을 확인하세요. (콘솔에 자세한 오류)`, 'error');
+  } else {
+    showToast(`Firebase 업로드 완료: ${ok}건${fail?` / 실패 ${fail}건`:''} · 담당자 ${members.length}명`, fail?'warning':'success');
+  }
+  console.log('[마이그레이션] 업로드 결과', { uploaded:ok, fail, members });
   return ok;
 }
 
