@@ -2767,7 +2767,7 @@ window.renderAll = function(cont) {
         <button class="btn btn-outline btn-sm" onclick="backupTasks()">💾 백업 (JSON)</button>
         <button class="btn btn-ghost btn-sm" onclick="restoreTasks()">📂 복원</button>
         <button class="btn btn-outline btn-sm" onclick="exportCSV()">📊 CSV 내보내기</button>
-        ${cfg.storage==='firebase'?`<button class="btn btn-accent btn-sm" onclick="migrateFromFiles()" title="백업 JSON 파일들을 Firebase로 업로드">☁️ 마이그레이션(파일)</button>${sharedFolderHandle?`<button class="btn btn-accent btn-sm" onclick="migrateFromFolder()" title="공유폴더의 모든 팀원 업무 파일을 Firebase로 업로드">☁️ 마이그레이션(폴더)</button>`:''}`:''}
+        ${cfg.storage==='firebase'?`<button class="btn btn-accent btn-sm" onclick="migrateFromFolder()" title="공유폴더를 선택하면 모든 팀원 업무 파일을 한 번에 Firebase로 업로드">☁️ 공유폴더 일괄 마이그레이션</button><button class="btn btn-outline btn-sm" onclick="migrateFromFiles()" title="백업 JSON 파일들을 직접 선택해 업로드">☁️ 파일 선택 마이그레이션</button>`:''}
       </div>
     </div>
     <div class="member-cards">${memberCards||'<div style="color:var(--text-muted);">팀원 정보 없음</div>'}</div>
@@ -4979,18 +4979,28 @@ window.migrateFromFiles = function() {
 // ② 공유폴더의 모든 *_업무.json 자동 수집 → Firestore 업로드
 window.migrateFromFolder = async function() {
   if (!(cfg.storage === 'firebase' && _fbRefs)) { showToast('먼저 Firebase 모드로 설정하세요.', 'warning'); return; }
-  if (!sharedFolderHandle) { showToast('공유폴더를 먼저 선택하세요.', 'error'); return; }
+  // Firebase 모드에서는 폴더가 연결돼 있지 않으므로, 그 자리에서 폴더 선택
+  let dir = sharedFolderHandle;
+  if (!dir) {
+    if (!window.showDirectoryPicker) { showToast('이 브라우저는 폴더 선택을 지원하지 않습니다. "마이그레이션(파일)"을 이용하세요.', 'warning'); return; }
+    try {
+      dir = await window.showDirectoryPicker({ mode:'read' });
+    } catch(e) { if (e.name==='AbortError') return; showToast('폴더 선택 실패: '+e.message, 'error'); return; }
+  }
   try {
-    let all = [];
-    if (sharedFolderHandle.entries) {
-      for await (const [name, handle] of sharedFolderHandle.entries()) {
+    let all = [], fileCount = 0;
+    if (dir.entries) {
+      for await (const [name, handle] of dir.entries()) {
         if (handle.kind !== 'file' || !name.endsWith('_업무.json')) continue;
+        if (name.startsWith('_')) continue; // _자동백업 등 내부파일 제외
+        fileCount++;
         try { const file = await handle.getFile(); all = all.concat(extractTasksFromJson(JSON.parse(await file.text()))); }
         catch(fe) { console.warn('[마이그레이션] 파일 실패', name, fe); }
       }
     }
-    if (!all.length) { showToast('공유폴더에서 업무 파일을 찾지 못했습니다.', 'info'); return; }
-    if (!confirm(`공유폴더의 팀원 업무 파일에서 ${all.length}건을 Firebase에 업로드합니다.`)) return;
+    if (!all.length) { showToast('선택한 폴더에서 "이름_업무.json" 파일을 찾지 못했습니다.', 'info'); return; }
+    const mem = [...new Set(all.map(t=>t.member).filter(Boolean))];
+    if (!confirm(`공유폴더 ${fileCount}개 파일에서 업무 ${all.length}건을 Firebase에 업로드합니다.\n담당자(${mem.length}명): ${mem.join(', ')||'미지정'}\n\n계속하시겠습니까?`)) return;
     await uploadTasksToFirestore(all);
   } catch(e) { showToast('마이그레이션 실패: ' + e.message, 'error'); }
 };
