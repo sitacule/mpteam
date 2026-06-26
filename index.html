@@ -541,6 +541,10 @@ body.viewer-mode #send-btn{pointer-events:none;opacity:.6;}
       <input type="hidden" id="storage-value" value="folder">
     </div>
     <div id="firebase-fields" class="hidden">
+      <div style="background:#E6FFFA;border:1px solid #81E6D9;border-radius:6px;padding:10px 14px;font-size:12px;color:#234E52;margin-bottom:10px;line-height:1.7;">
+        ☁️ <strong>Firebase 실시간 모드</strong> — 입력/수정이 모든 접속자에게 즉시 반영됩니다.<br>
+        <strong>연결 방법:</strong> ① <a href="https://console.firebase.google.com" target="_blank" style="color:#2C7A7B;text-decoration:underline;">Firebase 콘솔</a>에서 프로젝트 생성 → ② Firestore Database 만들기(서울 권장) → ③ 설정(⚙️) › 내 앱 › 웹(&lt;/&gt;) 추가 → ④ 아래 3개 값 복사·입력. <strong>팀 전원이 같은 값</strong>으로 설정하면 공유됩니다.
+      </div>
       <div class="form-group">
         <label>Firebase API Key</label>
         <input type="text" id="fb-apikey" placeholder="AIzaSy...">
@@ -1224,7 +1228,14 @@ window.initFirebase = async function() {
       tasks = snap.docs.map(d => ({ id:d.id, ...d.data() }));
       renderCurrentTab();
     });
-    _fbRefs = { db, collection, doc, setDoc, deleteDoc, colRef };
+    // 지시사항(follow-up) 실시간 구독
+    const fuColRef = collection(db, 'followups');
+    onSnapshot(fuColRef, snap => {
+      followups = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+      saveFollowupsLocal();
+      if (currentTab != null) renderCurrentTab();
+    });
+    _fbRefs = { db, collection, doc, setDoc, deleteDoc, colRef, fuColRef };
     return true;
   } catch(e) { console.error('Firebase error:', e); return false; }
 };
@@ -2756,6 +2767,7 @@ window.renderAll = function(cont) {
         <button class="btn btn-outline btn-sm" onclick="backupTasks()">💾 백업 (JSON)</button>
         <button class="btn btn-ghost btn-sm" onclick="restoreTasks()">📂 복원</button>
         <button class="btn btn-outline btn-sm" onclick="exportCSV()">📊 CSV 내보내기</button>
+        ${cfg.storage==='firebase'?`<button class="btn btn-accent btn-sm" onclick="migrateFromFiles()" title="백업 JSON 파일들을 Firebase로 업로드">☁️ 마이그레이션(파일)</button>${sharedFolderHandle?`<button class="btn btn-accent btn-sm" onclick="migrateFromFolder()" title="공유폴더의 모든 팀원 업무 파일을 Firebase로 업로드">☁️ 마이그레이션(폴더)</button>`:''}`:''}
       </div>
     </div>
     <div class="member-cards">${memberCards||'<div style="color:var(--text-muted);">팀원 정보 없음</div>'}</div>
@@ -4577,14 +4589,22 @@ window.saveFollowup = function() {
     month: $('fu-month').value || getCurrentMonth(),
     status: $('fu-status').value
   };
+  let record;
   if (id) {
     const i = followups.findIndex(x=>x.id===id);
-    if (i>=0) followups[i] = { ...followups[i], ...payload };
+    record = { ...(i>=0?followups[i]:{}), id, ...payload };
+    if (i>=0) followups[i] = record; else followups.push(record);
   } else {
-    followups.push({ id: uid(), createdBy: session.name, createdAt: Date.now(), ...payload });
+    record = { id: uid(), createdBy: session.name, createdAt: Date.now(), ...payload };
+    followups.push(record);
   }
-  saveFollowupsLocal();
-  saveFollowupsToFolder();
+  if (cfg.storage === 'firebase' && _fbRefs && _fbRefs.fuColRef) {
+    // Firestore에 쓰면 onSnapshot이 모든 접속자에 실시간 반영
+    _fbRefs.setDoc(_fbRefs.doc(_fbRefs.fuColRef, record.id), record).catch(e=>console.error('[지시사항] 저장 실패', e));
+  } else {
+    saveFollowupsLocal();
+    saveFollowupsToFolder();
+  }
   closeModal('followup-modal');
   renderCurrentTab();
   showToast('지시사항이 저장되었습니다.', 'success');
@@ -4595,8 +4615,12 @@ window.setFuView = function(v) { window._fuView = v; renderFollowups($('content'
 window.delFollowup = function(id) {
   if (!confirm('이 지시사항을 삭제하시겠습니까?')) return;
   followups = followups.filter(x=>x.id!==id);
-  saveFollowupsLocal();
-  saveFollowupsToFolder();
+  if (cfg.storage === 'firebase' && _fbRefs && _fbRefs.fuColRef) {
+    _fbRefs.deleteDoc(_fbRefs.doc(_fbRefs.fuColRef, id)).catch(e=>console.error('[지시사항] 삭제 실패', e));
+  } else {
+    saveFollowupsLocal();
+    saveFollowupsToFolder();
+  }
   renderCurrentTab();
   showToast('삭제되었습니다.', 'info');
 };
@@ -4605,8 +4629,12 @@ window.setFollowupStatus = function(id, val) {
   const i = followups.findIndex(x=>x.id===id);
   if (i<0) return;
   followups[i].status = val;
-  saveFollowupsLocal();
-  saveFollowupsToFolder();
+  if (cfg.storage === 'firebase' && _fbRefs && _fbRefs.fuColRef) {
+    _fbRefs.setDoc(_fbRefs.doc(_fbRefs.fuColRef, id), followups[i]).catch(e=>console.error('[지시사항] 상태저장 실패', e));
+  } else {
+    saveFollowupsLocal();
+    saveFollowupsToFolder();
+  }
   renderCurrentTab();
 };
 
@@ -4872,6 +4900,70 @@ window.toggleReportExclude = function(id) {
   upd(id, { reportExcluded: next });   // 저장+재렌더
   if (typeof autoSendIfFolder === 'function') autoSendIfFolder();
   showToast(next ? '보고서에서 제외했습니다.' : '보고서에 다시 포함했습니다.', 'info');
+};
+
+// ===================== PHASE 14 ADDITIONS (Firebase 마이그레이션) =====================
+
+// 백업 JSON에서 tasks 배열 추출 (백업 {tasks:[]} / 팀원파일 {member,tasks:[]} 모두 지원)
+function extractTasksFromJson(data) {
+  if (Array.isArray(data)) return data;
+  if (data && Array.isArray(data.tasks)) return data.tasks;
+  return [];
+}
+
+async function uploadTasksToFirestore(taskList) {
+  if (!(cfg.storage === 'firebase' && _fbRefs && _fbRefs.colRef)) {
+    showToast('Firebase 모드에서만 마이그레이션할 수 있습니다.', 'warning'); return 0;
+  }
+  let ok = 0, fail = 0;
+  for (const t of taskList) {
+    if (!t || !t.id) { t && (t.id = uid()); }
+    try {
+      await _fbRefs.setDoc(_fbRefs.doc(_fbRefs.colRef, t.id), t); // id 기준 → 중복 방지
+      ok++;
+    } catch(e) { fail++; console.error('[마이그레이션] 업로드 실패', e); }
+  }
+  showToast(`Firebase 업로드 완료: 성공 ${ok}건${fail?`, 실패 ${fail}건`:''}`, fail?'warning':'success');
+  return ok;
+}
+
+// ① 백업 JSON 파일(들) 선택 → Firestore 업로드
+window.migrateFromFiles = function() {
+  if (!(cfg.storage === 'firebase' && _fbRefs)) { showToast('먼저 Firebase 모드로 설정하세요.', 'warning'); return; }
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = '.json'; inp.multiple = true;
+  inp.onchange = async e => {
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
+    let all = [];
+    for (const f of files) {
+      try { all = all.concat(extractTasksFromJson(JSON.parse(await f.text()))); }
+      catch(err) { showToast(`${f.name} 읽기 실패`, 'error'); }
+    }
+    if (!all.length) { showToast('업로드할 업무가 없습니다.', 'info'); return; }
+    if (!confirm(`${files.length}개 파일에서 업무 ${all.length}건을 Firebase에 업로드합니다.\n(같은 업무 id는 덮어쓰기되어 중복되지 않습니다)`)) return;
+    await uploadTasksToFirestore(all);
+  };
+  inp.click();
+};
+
+// ② 공유폴더의 모든 *_업무.json 자동 수집 → Firestore 업로드
+window.migrateFromFolder = async function() {
+  if (!(cfg.storage === 'firebase' && _fbRefs)) { showToast('먼저 Firebase 모드로 설정하세요.', 'warning'); return; }
+  if (!sharedFolderHandle) { showToast('공유폴더를 먼저 선택하세요.', 'error'); return; }
+  try {
+    let all = [];
+    if (sharedFolderHandle.entries) {
+      for await (const [name, handle] of sharedFolderHandle.entries()) {
+        if (handle.kind !== 'file' || !name.endsWith('_업무.json')) continue;
+        try { const file = await handle.getFile(); all = all.concat(extractTasksFromJson(JSON.parse(await file.text()))); }
+        catch(fe) { console.warn('[마이그레이션] 파일 실패', name, fe); }
+      }
+    }
+    if (!all.length) { showToast('공유폴더에서 업무 파일을 찾지 못했습니다.', 'info'); return; }
+    if (!confirm(`공유폴더의 팀원 업무 파일에서 ${all.length}건을 Firebase에 업로드합니다.`)) return;
+    await uploadTasksToFirestore(all);
+  } catch(e) { showToast('마이그레이션 실패: ' + e.message, 'error'); }
 };
 
 // ===================== PHASE 13 ADDITIONS (업무 현황 조회 권한) =====================
