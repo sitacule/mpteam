@@ -4985,9 +4985,15 @@ window.migrateFromFiles = function() {
     if (!files.length) return;
     let all = [];
     for (const f of files) {
-      try { all = all.concat(extractTasksFromJson(JSON.parse(await f.text()))); }
-      catch(err) { showToast(`${f.name} 읽기 실패`, 'error'); }
+      try {
+        const parsed = JSON.parse(await f.text());
+        const got = extractTasksFromJson(parsed);
+        console.log(`[마이그레이션] 파일: ${f.name} → 추출 ${got.length}건`, parsed);
+        all = all.concat(got);
+      }
+      catch(err) { showToast(`${f.name} 읽기 실패`, 'error'); console.warn('[마이그레이션] 파일 파싱 실패', f.name, err); }
     }
+    console.log(`[마이그레이션] 파일 합계: ${files.length}개, 추출 ${all.length}건`);
     if (!all.length) { showToast('업로드할 업무가 없습니다. 파일 구조를 확인하세요.', 'info'); return; }
     const mem = [...new Set(all.map(t=>t.member).filter(Boolean))];
     if (!confirm(`${files.length}개 파일에서 업무 ${all.length}건을 Firebase에 업로드합니다.\n담당자(${mem.length}명): ${mem.join(', ')||'미지정'}\n\n계속하시겠습니까?`)) return;
@@ -5014,9 +5020,16 @@ window.migrateFromFolder = async function() {
         if (handle.kind !== 'file' || !name.endsWith('_업무.json')) continue;
         if (name.startsWith('_')) continue; // _자동백업 등 내부파일 제외
         fileCount++;
-        try { const file = await handle.getFile(); all = all.concat(extractTasksFromJson(JSON.parse(await file.text()))); }
+        try {
+          const file = await handle.getFile();
+          const parsed = JSON.parse(await file.text());
+          const got = extractTasksFromJson(parsed);
+          console.log(`[마이그레이션] 파일: ${name} → 추출 ${got.length}건`, parsed);
+          all = all.concat(got);
+        }
         catch(fe) { console.warn('[마이그레이션] 파일 실패', name, fe); }
       }
+      console.log(`[마이그레이션] 폴더 합계: ${fileCount}개 파일, 추출 ${all.length}건`);
     }
     if (!all.length) { showToast('선택한 폴더에서 "이름_업무.json" 파일을 찾지 못했습니다.', 'info'); return; }
     const mem = [...new Set(all.map(t=>t.member).filter(Boolean))];
