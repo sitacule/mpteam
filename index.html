@@ -727,7 +727,7 @@ body.viewer-mode #send-btn{pointer-events:none;opacity:.6;}
           <select id="edit-importance" onchange="calcEditPriority()">
             <option value="high">높음 (핵심 업무)</option>
             <option value="medium">보통</option>
-            <option value="low">낮음 (보조 업무)</option>
+            <option value="low">낮음 (단순 업무)</option>
           </select>
         </div>
       </div>
@@ -1900,19 +1900,22 @@ function addFormHTML() {
             <div>
               <label style="font-size:12px;color:var(--text-muted);">중요도</label>
               <select id="new-importance" onchange="calcNewPriority();checkContextWarnings()">
-                <option value="low" selected>낮음 (보조 업무)</option>
-                <option value="medium">보통</option>
+                <option value="low">낮음 (단순 업무)</option>
+                <option value="medium" selected>보통</option>
                 <option value="high">높음 (핵심 업무)</option>
               </select>
             </div>
           </div>
           <div style="display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap;">
-            <div id="new-priority-display" class="priority-auto-badge" style="background:#E2E8F0;color:#4A5568;">자동 계산: PD — 일반</div>
+            <div id="new-priority-display" class="priority-auto-badge" style="background:#E2E8F0;color:#4A5568;">자동 계산: 4. 보류 정리</div>
             <label style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:4px;">
               직접 지정:
               <select id="new-priority-manual" onchange="overrideNewPriority(this.value)">
                 <option value="">자동</option>
-                <option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option>
+                <option value="A">1. 즉시 실행</option>
+                <option value="B">2. 계획 수립</option>
+                <option value="C">3. 협조</option>
+                <option value="D">4. 보류 정리</option>
               </select>
             </label>
           </div>
@@ -1992,8 +1995,8 @@ function buildQuadrant(taskList) {
   const meta = {
     A:{tag:'❶', title:'즉시 실행', sub:'긴급+중요', ex:'예: 마감 임박 보고, 당일 현안 처리'},
     B:{tag:'❷', title:'계획 수립', sub:'중요+덜 긴급', ex:'예: 분기 전략, 예산안 설계, 개선 과제'},
-    C:{tag:'❸', title:'위임·협조', sub:'긴급+덜 중요', ex:'예: 자료 취합, 일정 조율, 단순 요청'},
-    D:{tag:'❹', title:'보류·정리', sub:'덜 긴급+덜 중요', ex:'예: 참고자료 정리, 백로그, 추후 검토'}
+    C:{tag:'❸', title:'협조', sub:'긴급+덜 중요', ex:'예: 자료 취합, 일정 조율, 단순 요청'},
+    D:{tag:'❹', title:'보류 정리', sub:'덜 긴급+덜 중요', ex:'예: 참고자료 정리, 백로그, 추후 검토'}
   };
   function cell(p) {
     const list = groups[p];
@@ -3300,11 +3303,12 @@ const PRIORITY_MAP = {
   medium: { high:'B', medium:'B', low:'D' },
   low:    { high:'B', medium:'D', low:'D' }
 };
+// 우선순위 = 4분면 액션명으로 표기 (A:즉시실행 B:계획수립 C:협조 D:보류정리)
 const PRIORITY_STYLE = {
-  A:{ bg:'#FED7D7', color:'#C53030', label:'A — 긴급·중요 (즉시처리)' },
-  B:{ bg:'#FEEBC8', color:'#C05621', label:'B — 중요 (계획 처리)' },
-  C:{ bg:'#BEE3F8', color:'#2C5282', label:'C — 긴급 (빠른 처리)' },
-  D:{ bg:'#E2E8F0', color:'#4A5568', label:'D — 일반' }
+  A:{ bg:'#FED7D7', color:'#C53030', label:'1. 즉시 실행 (긴급·중요)' },
+  B:{ bg:'#FEEBC8', color:'#C05621', label:'2. 계획 수립 (중요)' },
+  C:{ bg:'#BEE3F8', color:'#2C5282', label:'3. 협조 (긴급)' },
+  D:{ bg:'#E2E8F0', color:'#4A5568', label:'4. 보류 정리' }
 };
 
 window.calcNewPriority = function() {
@@ -3316,7 +3320,7 @@ window.calcNewPriority = function() {
   if (disp) {
     const s = PRIORITY_STYLE[p];
     disp.style.background = s.bg; disp.style.color = s.color;
-    disp.textContent = `자동 계산: P${p} — ${s.label}`;
+    disp.textContent = `자동 계산: ${s.label}`;
   }
 };
 
@@ -3329,7 +3333,7 @@ window.calcEditPriority = function() {
   if (disp) {
     const s = PRIORITY_STYLE[p];
     disp.style.background = s.bg; disp.style.color = s.color;
-    disp.textContent = `자동 계산: P${p} — ${s.label}`;
+    disp.textContent = `자동 계산: ${s.label}`;
   }
 };
 
@@ -4108,7 +4112,7 @@ window.overrideNewPriority = function(val) {
   if (disp) {
     const s = PRIORITY_STYLE[val];
     disp.style.background = s.bg; disp.style.color = s.color;
-    disp.textContent = `직접 지정: P${val} — ${s.label}`;
+    disp.textContent = `직접 지정: ${s.label}`;
   }
 };
 // calcNewPriority가 manual override를 존중하도록 보강
