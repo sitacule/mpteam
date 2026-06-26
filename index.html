@@ -81,7 +81,7 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:var
 .send-btn:hover{background:#C53030!important;}
 
 /* Sync badge */
-.sync-badge{display:flex;align-items:center;gap:6px;font-size:12px;padding:5px 10px;border-radius:20px;white-space:nowrap;cursor:default;}
+.sync-badge{display:none!important;}
 .sync-badge.connected{background:rgba(56,161,105,0.25);color:#9AE6B4;}
 .sync-badge.disconnected{background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.5);}
 .sync-badge .dot{width:7px;height:7px;border-radius:50%;display:inline-block;}
@@ -913,7 +913,7 @@ body.viewer-mode #send-btn{pointer-events:none;opacity:.6;}
     <div id="tab-row" style="display:contents;"></div>
     <div class="spacer"></div>
     <div id="sync-badge-wrap" style="display:flex;align-items:center;gap:8px;">
-      <div id="sync-badge" class="sync-badge disconnected">
+      <div id="sync-badge" class="sync-badge disconnected hidden">
         <span class="dot"></span>
         <span id="sync-label">미연결</span>
       </div>
