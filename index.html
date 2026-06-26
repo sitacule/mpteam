@@ -4355,14 +4355,9 @@ async function autoBackupToFolder() {
   } catch(e) { console.warn('[자동백업] 실패:', e); }
 }
 
-// (b) 로그아웃 시 백업 확인
+// (b) 로그아웃 (실시간 저장이므로 백업 다운로드 없음)
 window.resetApp = function() {
   if (READONLY) { location.href = location.pathname; return; }
-  const hasData = tasks.some(t => t.member === session.name);
-  if (hasData && session.role === 'member') {
-    const ans = confirm('로그아웃하기 전에 내 업무 데이터를 백업하시겠습니까?\n(확인=백업 후 로그아웃, 취소=그냥 로그아웃)');
-    if (ans) { try { backupTasks(); } catch(e){} }
-  }
   if (!confirm('로그아웃 하시겠습니까?')) return;
   if (syncInterval) clearInterval(syncInterval);
   syncInterval = null;
@@ -4443,11 +4438,10 @@ window.renderCurrentTab = function() {
   requestAnimationFrame(injectValueWidget);
 };
 
-// afterLogin 후 자동 백업 트리거
+// afterLogin (실시간 저장이므로 자동 폴더백업 비활성화)
 const _p6AfterLogin = window.afterLogin;
 window.afterLogin = async function() {
   await _p6AfterLogin();
-  setTimeout(autoBackupToFolder, 3000);
 };
 
 // ===================== PHASE 7 ADDITIONS (견고성·수명주기·격·코드건강) =====================
