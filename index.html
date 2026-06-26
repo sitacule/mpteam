@@ -1157,6 +1157,15 @@ window.showSetup = function() {
 };
 
 window.openSetupFromLogin = function() {
+  // 설정 변경은 총괄만 — 총괄 비밀번호로 잠금
+  const pass = cfg.leaderPass || '';
+  if (pass) {
+    const input = prompt('⚙️ 설정 변경은 총괄만 가능합니다.\n총괄 비밀번호를 입력하세요:');
+    if (input === null) return;                 // 취소
+    if (input !== pass) { alert('총괄 비밀번호가 일치하지 않습니다.'); return; }
+  } else {
+    if (!confirm('⚠️ 총괄 비밀번호가 설정되어 있지 않습니다.\n현재는 누구나 설정을 변경할 수 있습니다.\n\n계속 진행하여 설정에서 비밀번호를 지정하시겠습니까?')) return;
+  }
   $('login-modal').classList.add('hidden');
   showSetup();
 };
