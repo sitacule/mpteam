@@ -2822,7 +2822,8 @@ window.renderAll = function(cont) {
     // [4] 팀원 권한: 본인 업무만 수정·삭제 가능
     const canEdit = session.role !== 'member' || t.member === session.name;
     const confirmBtn = session.role === 'leader'
-      ? `<button class="btn btn-sm" style="margin-bottom:4px;background:${t.confirmedBy?'#C6F6D5;color:#276749':'#E2E8F0;color:#4A5568'};" onclick="toggleConfirm('${t.id}')">${t.confirmedBy?'✅ 확인됨':'☐ 확인'}</button>`
+      ? `<button class="btn btn-sm" style="margin-bottom:4px;background:${t.confirmedBy?'#C6F6D5;color:#276749':'#E2E8F0;color:#4A5568'};" onclick="toggleConfirm('${t.id}')">${t.confirmedBy?'✅ 확인됨':'☐ 확인'}</button>
+         <button class="btn btn-sm" style="margin-bottom:4px;background:${t.adminComment?'#EBF4FF;color:#2B6CB0':'#E2E8F0;color:#4A5568'};" onclick="openAdminComment('${t.id}')" title="이 업무에 총괄 코멘트 남기기">💬 코멘트${t.adminComment?' ✓':''}</button>`
       : (t.confirmedBy ? `<div class="confirmed-badge" style="margin-bottom:4px;">✅ 확인됨</div>` : '');
     const editBtns = canEdit
       ? `${confirmBtn}<button class="btn btn-outline btn-sm" onclick="openEdit('${t.id}')">수정</button>
@@ -2839,7 +2840,7 @@ window.renderAll = function(cont) {
       <td style="min-width:80px;">${progBar(t.progress)}</td>
       <td style="white-space:nowrap;">${fmt(t.due)}${od?'<br><span style="color:var(--accent);font-size:11px;">초과</span>':''}</td>
       <td>${statusBadge(t.status)}</td>
-      <td style="color:var(--text-muted);font-size:12px;max-width:100px;">${escHtml(t.note||'')}</td>
+      <td style="color:var(--text-muted);font-size:12px;max-width:140px;">${escHtml(t.note||'')}${t.adminComment?`<div class="admin-comment-box">💬 ${escHtml(t.adminComment)}</div>`:''}</td>
       <td style="white-space:nowrap;">${editBtns}</td>
     </tr>`;
   }).join('') || `<tr><td colspan="11"><div class="empty-state"><div class="icon">📭</div><p>등록된 업무가 없습니다.</p></div></td></tr>`;
@@ -3440,6 +3441,17 @@ window.addTask = async function() {
   setNewProg(0);
   showToast('업무가 등록되었습니다.', 'success');
   if (typeof autoSendIfFolder === 'function') autoSendIfFolder(); // [Phase9][2] 자동 전송
+};
+
+// 총괄 코멘트 입력(전체현황 표에서 바로) — 팀원에게 알림으로 표시됨
+window.openAdminComment = async function(id) {
+  if (session.role !== 'leader') { showToast('총괄만 코멘트를 남길 수 있습니다.', 'info'); return; }
+  const t = tasks.find(x => x.id === id);
+  if (!t) return;
+  const input = prompt(`💬 [${t.member}] "${t.name}"\n총괄 코멘트를 입력하세요. (비우면 코멘트 삭제)`, t.adminComment || '');
+  if (input === null) return; // 취소
+  await upd(id, { adminComment: input.trim() });
+  showToast(input.trim() ? '코멘트를 남겼습니다. (담당자에게 표시됩니다)' : '코멘트를 삭제했습니다.', 'success');
 };
 
 // ── [19] 총괄 확인 토글 ──
