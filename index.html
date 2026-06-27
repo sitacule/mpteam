@@ -2821,9 +2821,10 @@ window.renderAll = function(cont) {
     const rowCls=od?'overdue':ds?'due-soon':t.status==='진행중'?'in-progress':'';
     // [4] 팀원 권한: 본인 업무만 수정·삭제 가능
     const canEdit = session.role !== 'member' || t.member === session.name;
+    const _cN = t.adminComment ? 1 : 0;
     const confirmBtn = session.role === 'leader'
       ? `<button class="btn btn-sm" style="margin-bottom:4px;background:${t.confirmedBy?'#C6F6D5;color:#276749':'#E2E8F0;color:#4A5568'};" onclick="toggleConfirm('${t.id}')">${t.confirmedBy?'✅ 확인됨':'☐ 확인'}</button>
-         <button class="btn btn-sm" style="margin-bottom:4px;background:${t.adminComment?'#EBF4FF;color:#2B6CB0':'#E2E8F0;color:#4A5568'};" onclick="openAdminComment('${t.id}')" title="이 업무에 총괄 코멘트 남기기">💬 코멘트${t.adminComment?' ✓':''}</button>`
+         <button class="btn btn-sm" style="margin-bottom:4px;background:${_cN?'#EBF4FF;color:#2B6CB0':'#E2E8F0;color:#4A5568'};" onclick="toggleAdminComment('${t.id}')" title="총괄 코멘트 보기/접기">💬 ${_cN}</button>`
       : (t.confirmedBy ? `<div class="confirmed-badge" style="margin-bottom:4px;">✅ 확인됨</div>` : '');
     const editBtns = canEdit
       ? `${confirmBtn}<button class="btn btn-outline btn-sm" onclick="openEdit('${t.id}')">수정</button>
@@ -2840,9 +2841,18 @@ window.renderAll = function(cont) {
       <td style="min-width:80px;">${progBar(t.progress)}</td>
       <td style="white-space:nowrap;">${fmt(t.due)}${od?'<br><span style="color:var(--accent);font-size:11px;">초과</span>':''}</td>
       <td>${statusBadge(t.status)}</td>
-      <td style="color:var(--text-muted);font-size:12px;max-width:140px;">${escHtml(t.note||'')}${t.adminComment?`<div class="admin-comment-box">💬 ${escHtml(t.adminComment)}</div>`:''}</td>
+      <td style="color:var(--text-muted);font-size:12px;max-width:140px;">${escHtml(t.note||'')}</td>
       <td style="white-space:nowrap;">${editBtns}</td>
-    </tr>`;
+    </tr>
+    ${session.role==='leader' ? `<tr class="acrow" id="acrow-${t.id}" style="display:none;"><td colspan="11" style="background:#F7FAFF;padding:10px 16px;">
+      <div style="display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:200px;font-size:13px;color:var(--text);line-height:1.6;">
+          ${t.adminComment ? `<span style="color:var(--info);font-weight:700;">💬 총괄 코멘트:</span> ${escHtml(t.adminComment)}` : '<span style="color:var(--text-muted);">아직 코멘트가 없습니다.</span>'}
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="openAdminComment('${t.id}')">${t.adminComment?'✏️ 수정':'➕ 코멘트 작성'}</button>
+        ${t.adminComment?`<button class="btn btn-danger btn-sm" onclick="clearAdminComment('${t.id}')">🗑 삭제</button>`:''}
+      </div>
+    </td></tr>` : ''}`;
   }).join('') || `<tr><td colspan="11"><div class="empty-state"><div class="icon">📭</div><p>등록된 업무가 없습니다.</p></div></td></tr>`;
   if (_allRest > 0) rows += `<tr><td colspan="11" style="text-align:center;padding:12px;"><button class="btn btn-outline btn-sm" onclick="window._allRowLimit=(window._allRowLimit||window.ROW_CAP)+window.ROW_CAP;renderAll($('content'))">+ ${nf(_allRest)}건 더 보기</button></td></tr>`;
 
@@ -3443,15 +3453,29 @@ window.addTask = async function() {
   if (typeof autoSendIfFolder === 'function') autoSendIfFolder(); // [Phase9][2] 자동 전송
 };
 
-// 총괄 코멘트 입력(전체현황 표에서 바로) — 팀원에게 알림으로 표시됨
+// 코멘트 행 펼침/접힘 토글 (재렌더 없이 해당 행만)
+window.toggleAdminComment = function(id) {
+  const r = document.getElementById('acrow-' + id);
+  if (!r) return;
+  r.style.display = (r.style.display === 'none' || !r.style.display) ? 'table-row' : 'none';
+};
+
+// 총괄 코멘트 입력 — 팀원에게 알림으로 표시됨
 window.openAdminComment = async function(id) {
   if (session.role !== 'leader') { showToast('총괄만 코멘트를 남길 수 있습니다.', 'info'); return; }
   const t = tasks.find(x => x.id === id);
   if (!t) return;
-  const input = prompt(`💬 [${t.member}] "${t.name}"\n총괄 코멘트를 입력하세요. (비우면 코멘트 삭제)`, t.adminComment || '');
+  const input = prompt(`💬 [${t.member}] "${t.name}"\n총괄 코멘트를 입력하세요.`, t.adminComment || '');
   if (input === null) return; // 취소
   await upd(id, { adminComment: input.trim() });
   showToast(input.trim() ? '코멘트를 남겼습니다. (담당자에게 표시됩니다)' : '코멘트를 삭제했습니다.', 'success');
+};
+
+window.clearAdminComment = async function(id) {
+  if (session.role !== 'leader') return;
+  if (!confirm('이 총괄 코멘트를 삭제하시겠습니까?')) return;
+  await upd(id, { adminComment: '' });
+  showToast('코멘트를 삭제했습니다.', 'info');
 };
 
 // ── [19] 총괄 확인 토글 ──
