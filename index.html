@@ -2663,14 +2663,19 @@ window.renderMy = function(cont) {
         <td style="white-space:nowrap;">${fmt(t.due)}${od?'<br><span style="color:var(--accent);font-size:11px;">기한초과</span>':''}</td>
         <td>${prioBadge(t.priority)}</td>
         <td>${statusBadge(t.status)}</td>
-        <td style="color:var(--text-muted);font-size:12px;max-width:100px;">${escHtml(t.note||'')}${t.adminComment?`<div class="admin-comment-box">💬 ${escHtml(t.adminComment)}</div>`:''}</td>
+        <td style="color:var(--text-muted);font-size:12px;max-width:100px;">${escHtml(t.note||'')}</td>
         <td style="white-space:nowrap;">
           ${t.confirmedBy?`<div class="confirmed-badge" style="margin-bottom:4px;">✅ 확인됨</div>`:`<div class="unconfirmed-badge" style="margin-bottom:4px;">미확인</div>`}
+          <button class="btn btn-sm" style="margin-bottom:4px;background:${commentCount(t)?'#EBF4FF;color:#2B6CB0':'#E2E8F0;color:#4A5568'};" onclick="toggleAdminComment('${t.id}')" title="댓글 보기/접기">💬 ${commentCount(t)}</button>
           <button class="btn btn-outline btn-sm" onclick="openEdit('${t.id}')">수정</button>
           <button class="btn btn-ghost btn-sm" style="margin-top:4px;" onclick="copyTask('${t.id}')" title="복사">복사</button>
           <button class="btn btn-danger btn-sm" style="margin-top:4px;" onclick="del('${t.id}')">삭제</button>
         </td>
-      </tr>`;
+      </tr>
+      <tr class="acrow" id="acrow-${t.id}" style="display:none;"><td colspan="10" style="background:#F7FAFF;padding:10px 16px;">
+        <div id="acthread-${t.id}">${commentThreadHTML(t)}</div>
+        <div style="margin-top:8px;"><button class="btn btn-outline btn-sm" onclick="addComment('${t.id}')">💬 댓글 달기</button></div>
+      </td></tr>`;
     }).join('');
     if (_rest > 0) rows += `<tr><td colspan="10" style="text-align:center;padding:12px;"><button class="btn btn-outline btn-sm" onclick="window._myRowLimit=(window._myRowLimit||window.ROW_CAP)+window.ROW_CAP;renderMy($('content'))">+ ${nf(_rest)}건 더 보기</button></td></tr>`;
   }
@@ -2821,10 +2826,10 @@ window.renderAll = function(cont) {
     const rowCls=od?'overdue':ds?'due-soon':t.status==='진행중'?'in-progress':'';
     // [4] 팀원 권한: 본인 업무만 수정·삭제 가능
     const canEdit = session.role !== 'member' || t.member === session.name;
-    const _cN = t.adminComment ? 1 : 0;
+    const _cN = commentCount(t);
     const confirmBtn = session.role === 'leader'
       ? `<button class="btn btn-sm" style="margin-bottom:4px;background:${t.confirmedBy?'#C6F6D5;color:#276749':'#E2E8F0;color:#4A5568'};" onclick="toggleConfirm('${t.id}')">${t.confirmedBy?'✅ 확인됨':'☐ 확인'}</button>
-         <button class="btn btn-sm" style="margin-bottom:4px;background:${_cN?'#EBF4FF;color:#2B6CB0':'#E2E8F0;color:#4A5568'};" onclick="toggleAdminComment('${t.id}')" title="총괄 코멘트 보기/접기">💬 ${_cN}</button>`
+         <button class="btn btn-sm" style="margin-bottom:4px;background:${_cN?'#EBF4FF;color:#2B6CB0':'#E2E8F0;color:#4A5568'};" onclick="toggleAdminComment('${t.id}')" title="댓글 보기/접기">💬 ${_cN}</button>`
       : (t.confirmedBy ? `<div class="confirmed-badge" style="margin-bottom:4px;">✅ 확인됨</div>` : '');
     const editBtns = canEdit
       ? `${confirmBtn}<button class="btn btn-outline btn-sm" onclick="openEdit('${t.id}')">수정</button>
@@ -2844,15 +2849,10 @@ window.renderAll = function(cont) {
       <td style="color:var(--text-muted);font-size:12px;max-width:140px;">${escHtml(t.note||'')}</td>
       <td style="white-space:nowrap;">${editBtns}</td>
     </tr>
-    ${session.role==='leader' ? `<tr class="acrow" id="acrow-${t.id}" style="display:none;"><td colspan="11" style="background:#F7FAFF;padding:10px 16px;">
-      <div style="display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;">
-        <div style="flex:1;min-width:200px;font-size:13px;color:var(--text);line-height:1.6;">
-          ${t.adminComment ? `<span style="color:var(--info);font-weight:700;">💬 총괄 코멘트:</span> ${escHtml(t.adminComment)}` : '<span style="color:var(--text-muted);">아직 코멘트가 없습니다.</span>'}
-        </div>
-        <button class="btn btn-outline btn-sm" onclick="openAdminComment('${t.id}')">${t.adminComment?'✏️ 수정':'➕ 코멘트 작성'}</button>
-        ${t.adminComment?`<button class="btn btn-danger btn-sm" onclick="clearAdminComment('${t.id}')">🗑 삭제</button>`:''}
-      </div>
-    </td></tr>` : ''}`;
+    <tr class="acrow" id="acrow-${t.id}" style="display:none;"><td colspan="11" style="background:#F7FAFF;padding:10px 16px;">
+      <div id="acthread-${t.id}">${commentThreadHTML(t)}</div>
+      <div style="margin-top:8px;"><button class="btn btn-outline btn-sm" onclick="addComment('${t.id}')">💬 댓글 달기</button></div>
+    </td></tr>`;
   }).join('') || `<tr><td colspan="11"><div class="empty-state"><div class="icon">📭</div><p>등록된 업무가 없습니다.</p></div></td></tr>`;
   if (_allRest > 0) rows += `<tr><td colspan="11" style="text-align:center;padding:12px;"><button class="btn btn-outline btn-sm" onclick="window._allRowLimit=(window._allRowLimit||window.ROW_CAP)+window.ROW_CAP;renderAll($('content'))">+ ${nf(_allRest)}건 더 보기</button></td></tr>`;
 
@@ -3453,29 +3453,57 @@ window.addTask = async function() {
   if (typeof autoSendIfFolder === 'function') autoSendIfFolder(); // [Phase9][2] 자동 전송
 };
 
-// 코멘트 행 펼침/접힘 토글 (재렌더 없이 해당 행만)
+// ── 댓글 스레드 (총괄·팀원 양방향) ──
+// 레거시 단일 adminComment를 스레드 첫 댓글로 흡수해 표시
+function getComments(t) {
+  const arr = Array.isArray(t.comments) ? t.comments.slice() : [];
+  if (t.adminComment && !arr.some(c => c.text === t.adminComment && c.role === 'leader')) {
+    arr.unshift({ by:'총괄', role:'leader', text:t.adminComment, at:t.confirmedAt || '' });
+  }
+  return arr;
+}
+function commentCount(t) { return getComments(t).length; }
+function commentThreadHTML(t) {
+  const list = getComments(t);
+  if (!list.length) return '<div style="color:var(--text-muted);font-size:13px;">아직 댓글이 없습니다.</div>';
+  return list.map(c => {
+    const who = c.role === 'leader' ? '👑 총괄' : `👤 ${escHtml(c.by || '')}`;
+    const when = c.at ? `<span style="color:var(--text-muted);font-size:11px;margin-left:6px;">${(c.at || '').slice(0,16).replace('T',' ')}</span>` : '';
+    return `<div style="padding:6px 0;border-bottom:1px dashed var(--border);font-size:13px;">
+      <strong style="color:${c.role==='leader'?'var(--info)':'var(--primary)'};">${who}</strong>${when}
+      <div style="margin-top:2px;line-height:1.5;">${escHtml(c.text)}</div>
+    </div>`;
+  }).join('');
+}
+// 댓글 영역 펼침/접힘 (재렌더 없이 해당 행만). 팀원이 열면 '본 것'으로 표시.
 window.toggleAdminComment = function(id) {
   const r = document.getElementById('acrow-' + id);
   if (!r) return;
-  r.style.display = (r.style.display === 'none' || !r.style.display) ? 'table-row' : 'none';
+  const opening = (r.style.display === 'none' || !r.style.display);
+  r.style.display = opening ? 'table-row' : 'none';
+  if (opening && session.role === 'member') {
+    const t = tasks.find(x => x.id === id);
+    if (t) { markCommentSeen(id, lastOthersCommentAt(t)); const b=$('comment-alert-banner'); if(b && unseenCommentTasks().length===0) b.remove(); }
+  }
 };
-
-// 총괄 코멘트 입력 — 팀원에게 알림으로 표시됨
-window.openAdminComment = async function(id) {
-  if (session.role !== 'leader') { showToast('총괄만 코멘트를 남길 수 있습니다.', 'info'); return; }
+// 댓글 등록 — 총괄은 모든 업무, 팀원은 본인 업무에 답글
+window.addComment = async function(id) {
+  if (session.role === 'viewer') { showToast('열람 전용입니다.', 'info'); return; }
   const t = tasks.find(x => x.id === id);
   if (!t) return;
-  const input = prompt(`💬 [${t.member}] "${t.name}"\n총괄 코멘트를 입력하세요.`, t.adminComment || '');
-  if (input === null) return; // 취소
-  await upd(id, { adminComment: input.trim() });
-  showToast(input.trim() ? '코멘트를 남겼습니다. (담당자에게 표시됩니다)' : '코멘트를 삭제했습니다.', 'success');
-};
-
-window.clearAdminComment = async function(id) {
-  if (session.role !== 'leader') return;
-  if (!confirm('이 총괄 코멘트를 삭제하시겠습니까?')) return;
-  await upd(id, { adminComment: '' });
-  showToast('코멘트를 삭제했습니다.', 'info');
+  if (session.role === 'member' && t.member !== session.name) { showToast('본인 업무에만 댓글을 달 수 있습니다.', 'info'); return; }
+  const text = prompt(`💬 "${t.name}"\n댓글을 입력하세요.`, '');
+  if (text === null) return;
+  const v = text.trim(); if (!v) return;
+  let comments = Array.isArray(t.comments) ? t.comments.slice() : [];
+  if (t.adminComment && !comments.some(c => c.text === t.adminComment && c.role === 'leader')) {
+    comments.unshift({ by:'총괄', role:'leader', text:t.adminComment, at:t.confirmedAt || new Date().toISOString() });
+  }
+  comments.push({ by: session.name, role: session.role, text: v, at: new Date().toISOString() });
+  await upd(id, { comments, adminComment: '' });
+  // 내가 단 댓글은 '본 것'으로 처리
+  markCommentSeen(id, lastOthersCommentAt(tasks.find(x=>x.id===id)||t));
+  showToast('댓글을 등록했습니다.', 'success');
 };
 
 // ── [19] 총괄 확인 토글 ──
@@ -4220,19 +4248,28 @@ window.genReadOnlyLink = function() {
   }
 };
 
-// ── [3] 팀원 알림: 총괄 코멘트 미확인 배지 ──
+// ── [3] 팀원 알림: 새 댓글(타인) 미확인 배지 ──
 function getSeenComments() {
   try { return JSON.parse(localStorage.getItem('wrs_seen_comments') || '{}'); } catch(e) { return {}; }
 }
-function markCommentSeen(taskId, text) {
+function markCommentSeen(taskId, val) {
   const seen = getSeenComments();
-  seen[taskId] = text;
+  seen[taskId] = val || '';
   localStorage.setItem('wrs_seen_comments', JSON.stringify(seen));
+}
+// 본인이 아닌 사람이 단 마지막 댓글 시각
+function lastOthersCommentAt(t) {
+  let last = '';
+  getComments(t).forEach(c => { if (c.by !== session.name && (c.at || '') > last) last = c.at || ''; });
+  return last;
 }
 function unseenCommentTasks() {
   if (session.role !== 'member') return [];
   const seen = getSeenComments();
-  return tasks.filter(t => t.member === session.name && t.adminComment && seen[t.id] !== t.adminComment);
+  return tasks.filter(t => t.member === session.name).filter(t => {
+    const last = lastOthersCommentAt(t);
+    return last && (seen[t.id] || '') < last;
+  });
 }
 
 // openEdit 시 해당 업무 코멘트를 '확인함'으로 표시
@@ -4243,8 +4280,8 @@ window.openEdit = function(id) {
   if (!t) return;
   // [Phase9][1] 수행일 채우기
   const ed = $('edit-date'); if (ed) ed.value = t.date || today();
-  if (t.adminComment && session.role === 'member') {
-    markCommentSeen(t.id, t.adminComment);
+  if (session.role === 'member') {
+    markCommentSeen(t.id, lastOthersCommentAt(t));
     const badge = $('comment-alert-banner');
     if (badge) { setTimeout(() => { if (unseenCommentTasks().length === 0) badge.remove(); }, 300); }
   }
