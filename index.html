@@ -783,7 +783,7 @@ body.viewer-mode #send-btn{pointer-events:none;opacity:.6;}
     </div>
     <div id="leader-edit-section" class="hidden">
       <hr style="border:none;border-top:1px solid var(--border);margin:16px 0;">
-      <div style="font-size:12px;font-weight:700;color:var(--primary);margin-bottom:10px;">👑 팀장 전용</div>
+      <div style="font-size:12px;font-weight:700;color:var(--primary);margin-bottom:10px;">📋 팀장 전용</div>
       <div class="form-group" style="margin-bottom:10px;">
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
           <input type="checkbox" id="edit-confirmed" style="width:16px;height:16px;accent-color:var(--success);">
@@ -2268,7 +2268,6 @@ window.renderWeekly = function(cont) {
   cont.innerHTML = `
     <div class="report-wrap">
       <div class="report-header">
-        <img src="logo.png" alt="" class="report-logo" onerror="this.style.display='none'">
         <div class="report-title">주간업무보고</div>
         <div class="report-meta">경영기획팀 · ${rangeLabel}</div>
       </div>
@@ -2396,7 +2395,6 @@ window.renderMonthlyReport = function(cont) {
   cont.innerHTML = `
     <div class="report-wrap pptx-report">
       <div class="report-header">
-        <img src="logo.png" alt="" class="report-logo" onerror="this.style.display='none'">
         <div class="report-title">${titleDate}</div>
         <div class="report-meta">경영기획팀 월간업무보고</div>
       </div>
@@ -3366,7 +3364,6 @@ window.renderMonthlyReport = function(cont) {
   // 커버 페이지 (인쇄 시 첫 장) — 항목 12
   const coverPage = `
     <div class="cover-page">
-      <img src="logo.png" alt="" style="height:48px;width:auto;margin:0 auto 20px;display:block;" onerror="this.style.display='none'">
       <h1>${cfg.orgName || '경영기획팀'}</h1>
       <div class="cover-sub">${titleDate}</div>
       <div class="cover-meta">
@@ -3386,7 +3383,6 @@ window.renderMonthlyReport = function(cont) {
     ${coverPage}
     <div class="report-wrap pptx-report">
       <div class="report-header">
-        <img src="logo.png" alt="" class="report-logo" onerror="this.style.display='none'">
         <div class="report-title">${titleDate}</div>
         <div class="report-meta">경영기획팀 월간업무보고</div>
       </div>
@@ -3569,7 +3565,7 @@ function commentThreadHTML(t) {
   const list = getComments(t);
   if (!list.length) return '<div style="color:var(--text-muted);font-size:13px;">아직 댓글이 없습니다.</div>';
   return list.map(c => {
-    const who = c.role === 'leader' ? '👑 팀장' : `👤 ${escHtml(c.by || '')}`;
+    const who = c.role === 'leader' ? '📋 팀장' : `👤 ${escHtml(c.by || '')}`;
     const when = c.at ? `<span style="color:var(--text-muted);font-size:11px;margin-left:6px;">${(c.at || '').slice(0,16).replace('T',' ')}${c.editedAt?' (수정됨)':''}</span>` : '';
     const canMod = session.role === 'leader' || c.by === session.name;
     const modBtns = canMod
