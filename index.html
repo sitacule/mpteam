@@ -566,7 +566,7 @@ body.viewer-mode #send-btn{pointer-events:none;opacity:.6;}
       <input type="text" id="setup-orgname" placeholder="예: 경영기획팀">
     </div>
     <div class="form-group">
-      <label>총괄 조회 이름</label>
+      <label>팀장 이름</label>
       <input type="text" id="setup-leader" placeholder="예: 홍길동">
     </div>
     <div class="form-group">
@@ -578,7 +578,7 @@ body.viewer-mode #send-btn{pointer-events:none;opacity:.6;}
       <div id="setup-parts" style="display:flex;flex-direction:column;gap:6px;"></div>
     </div>
     <div class="form-group">
-      <label>총괄 조회 비밀번호 (선택)</label>
+      <label>팀장 비밀번호 (선택)</label>
       <input type="password" id="setup-pass" placeholder="비워두면 비밀번호 없음">
     </div>
     <div class="form-group">
@@ -606,7 +606,7 @@ body.viewer-mode #send-btn{pointer-events:none;opacity:.6;}
       <label>역할 선택</label>
       <div class="radio-group">
         <label><input type="radio" name="role" value="member" checked id="role-member" onchange="onRoleChange()"> 👤 팀원</label>
-        <label><input type="radio" name="role" value="leader" id="role-leader" onchange="onRoleChange()"> 📋 총괄</label>
+        <label><input type="radio" name="role" value="leader" id="role-leader" onchange="onRoleChange()"> 📋 팀장</label>
         <label><input type="radio" name="role" value="viewer" id="role-viewer" onchange="onRoleChange()"> 🔎 업무 현황 조회</label>
         <label><input type="radio" name="role" value="exec" id="role-exec" onchange="onRoleChange()"> 🛡️ 관리자</label>
       </div>
@@ -616,13 +616,13 @@ body.viewer-mode #send-btn{pointer-events:none;opacity:.6;}
       <div id="member-chips" class="chip-group"></div>
     </div>
     <div id="leader-pass-area" class="form-group hidden">
-      <label>총괄 비밀번호</label>
+      <label>팀장 비밀번호</label>
       <input type="password" id="login-pass" placeholder="비밀번호 입력">
     </div>
     <div id="viewer-area" class="form-group hidden">
       <label>업무 현황 조회 (임원·대표이사)</label>
       <div style="background:#EBF8FF;border:1px solid #90CDF4;border-radius:6px;padding:10px 14px;font-size:12px;color:#2C5282;">
-        🔎 총괄과 동일한 화면·내용을 <strong>열람 전용</strong>으로 조회합니다. (수정·삭제 불가)
+        🔎 팀장과 동일한 화면·내용을 <strong>열람 전용</strong>으로 조회합니다. (수정·삭제 불가)
       </div>
     </div>
     <div id="exec-area" class="form-group hidden">
@@ -632,7 +632,7 @@ body.viewer-mode #send-btn{pointer-events:none;opacity:.6;}
       </div>
     </div>
     <div style="display:flex;gap:10px;justify-content:space-between;margin-top:24px;flex-wrap:wrap;">
-      <button class="btn btn-ghost btn-sm" onclick="openSetupFromLogin()" title="총괄만 가능 (비밀번호 필요)">⚙️ 설정 변경 🔒</button>
+      <button class="btn btn-ghost btn-sm" onclick="openSetupFromLogin()" title="팀장만 가능 (비밀번호 필요)">⚙️ 설정 변경 🔒</button>
       <button class="btn btn-primary" onclick="doLogin()">로그인 →</button>
     </div>
   </div>
@@ -644,7 +644,7 @@ body.viewer-mode #send-btn{pointer-events:none;opacity:.6;}
     <h2>🔗 팀 접속(초대) 링크</h2>
     <p class="subtitle">이 링크를 팀원에게 공유하면 <strong>같은 설정(팀원·파트·저장방식·Firebase 키)</strong>으로 바로 시작합니다. 팀원은 링크 접속 → 본인 이름 선택 → 업무 입력만 하면 됩니다.</p>
     <div id="share-fb-note" class="hidden" style="background:#E6FFFA;border:1px solid #81E6D9;border-radius:6px;padding:10px 14px;font-size:13px;color:#234E52;margin-bottom:12px;">
-      ☁️ Firebase 모드: 이 링크에 <strong>Firebase 키까지 포함</strong>되어 있어, 팀원이 링크만 열면 실시간 모드로 자동 연결됩니다. (총괄이 설정을 바꾸면 자동 반영)
+      ☁️ Firebase 모드: 이 링크에 <strong>Firebase 키까지 포함</strong>되어 있어, 팀원이 링크만 열면 실시간 모드로 자동 연결됩니다. (팀장이 설정을 바꾸면 자동 반영)
     </div>
     <div id="share-folder-note" class="hidden" style="background:#EBF4FF;border:1px solid #90CDF4;border-radius:6px;padding:10px 14px;font-size:13px;color:#2C5282;margin-bottom:12px;">
       📁 공유폴더 모드: 팀원들에게 아래 링크를 공유하거나, 공유폴더에 <strong>team_config.json</strong>을 저장하세요.
@@ -772,7 +772,7 @@ body.viewer-mode #send-btn{pointer-events:none;opacity:.6;}
     </div>
     <div id="leader-edit-section" class="hidden">
       <hr style="border:none;border-top:1px solid var(--border);margin:16px 0;">
-      <div style="font-size:12px;font-weight:700;color:var(--primary);margin-bottom:10px;">👑 총괄 조회 전용</div>
+      <div style="font-size:12px;font-weight:700;color:var(--primary);margin-bottom:10px;">👑 팀장 전용</div>
       <div class="form-group" style="margin-bottom:10px;">
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
           <input type="checkbox" id="edit-confirmed" style="width:16px;height:16px;accent-color:var(--success);">
@@ -781,8 +781,8 @@ body.viewer-mode #send-btn{pointer-events:none;opacity:.6;}
         <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">팀원 화면에 ✅ 확인됨 배지가 표시됩니다.</div>
       </div>
       <div class="form-group" style="margin-bottom:0;">
-        <label>총괄 코멘트</label>
-        <textarea id="edit-admin-comment" rows="2" placeholder="총괄 피드백, 지시사항 등을 입력하세요. 팀원이 다음 접속 시 확인할 수 있습니다."></textarea>
+        <label>팀장 코멘트</label>
+        <textarea id="edit-admin-comment" rows="2" placeholder="팀장 피드백, 지시사항 등을 입력하세요. 팀원이 다음 접속 시 확인할 수 있습니다."></textarea>
       </div>
     </div>
     <div id="edit-history-area"></div>
@@ -812,7 +812,7 @@ body.viewer-mode #send-btn{pointer-events:none;opacity:.6;}
     <h3 style="font-size:14px;color:var(--primary);margin:14px 0 8px;">👤 역할</h3>
     <ul class="limit-list">
       <li>· <strong>팀원</strong> — 본인 업무 등록·진행관리, 받은 지시사항 처리</li>
-      <li>· <strong>총괄</strong> — 팀 전체 현황·보고서 관리, 지시사항 배정 (설정 변경은 총괄만 가능)</li>
+      <li>· <strong>팀장</strong> — 팀 전체 현황·보고서 관리, 지시사항 배정 (설정 변경은 팀장만 가능)</li>
       <li>· <strong>업무 현황 조회</strong> — 임원·대표이사용 열람 전용(수정 불가)</li>
     </ul>
     <h3 style="font-size:14px;color:var(--primary);margin:14px 0 8px;">💾 데이터 저장</h3>
@@ -846,11 +846,11 @@ body.viewer-mode #send-btn{pointer-events:none;opacity:.6;}
       </div>
       <div class="form-group" style="margin-bottom:0;">
         <label>지시 주체 *</label>
-        <input type="text" id="fu-issuer" list="fu-issuer-list" placeholder="예: 대표이사 / 담당임원 / 총괄">
+        <input type="text" id="fu-issuer" list="fu-issuer-list" placeholder="예: 대표이사 / 담당임원 / 팀장">
         <datalist id="fu-issuer-list">
           <option value="대표이사"></option>
           <option value="담당임원"></option>
-          <option value="총괄"></option>
+          <option value="팀장"></option>
           <option value="유관부서"></option>
         </datalist>
       </div>
@@ -1085,7 +1085,7 @@ window.downloadBootstrapConfig = function() {
     members: cfg.members || [],
     memberParts: cfg.memberParts || {},
     firebase: { apiKey: cfg.firebase.apiKey, projectId: cfg.firebase.projectId, appId: cfg.firebase.appId }
-    // leaderPass는 보안상 제외(총괄 비밀번호는 Firestore meta/config에서 동기화됨)
+    // leaderPass는 보안상 제외(팀장 비밀번호는 Firestore meta/config에서 동기화됨)
   };
   const blob = new Blob([JSON.stringify(boot, null, 2)], { type:'application/json' });
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
@@ -1161,14 +1161,14 @@ window.showSetup = function() {
 };
 
 window.openSetupFromLogin = function() {
-  // 설정 변경은 총괄만 — 총괄 비밀번호로 잠금
+  // 설정 변경은 팀장만 — 팀장 비밀번호로 잠금
   const pass = cfg.leaderPass || '';
   if (pass) {
-    const input = prompt('⚙️ 설정 변경은 총괄만 가능합니다.\n총괄 비밀번호를 입력하세요:');
+    const input = prompt('⚙️ 설정 변경은 팀장만 가능합니다.\n팀장 비밀번호를 입력하세요:');
     if (input === null) return;                 // 취소
-    if (input !== pass) { alert('총괄 비밀번호가 일치하지 않습니다.'); return; }
+    if (input !== pass) { alert('팀장 비밀번호가 일치하지 않습니다.'); return; }
   } else {
-    if (!confirm('⚠️ 총괄 비밀번호가 설정되어 있지 않습니다.\n현재는 누구나 설정을 변경할 수 있습니다.\n\n계속 진행하여 설정에서 비밀번호를 지정하시겠습니까?')) return;
+    if (!confirm('⚠️ 팀장 비밀번호가 설정되어 있지 않습니다.\n현재는 누구나 설정을 변경할 수 있습니다.\n\n계속 진행하여 설정에서 비밀번호를 지정하시겠습니까?')) return;
   }
   $('login-modal').classList.add('hidden');
   showSetup();
@@ -1179,7 +1179,7 @@ window.completeSetup = function() {
   const leader = $('setup-leader').value.trim();
   const membersRaw = $('setup-members').value.trim();
   const leaderPass = $('setup-pass').value;
-  if (!leader) { alert('총괄 조회 이름을 입력하세요.'); return; }
+  if (!leader) { alert('팀장 이름을 입력하세요.'); return; }
   if (!membersRaw) { alert('팀원 이름을 입력하세요.'); return; }
   const members = membersRaw.split(',').map(m => m.trim()).filter(Boolean);
   const orgName = ($('setup-orgname')||{}).value?.trim() || '';
@@ -1213,7 +1213,7 @@ window.showLogin = function() {
   $('setup-modal').classList.add('hidden');
   $('login-modal').classList.remove('hidden');
   $('app').classList.add('hidden');
-  $('login-subtitle').textContent = `총괄: ${cfg.leader} | 팀원: ${(cfg.members||[]).join(', ')}`;
+  $('login-subtitle').textContent = `팀장: ${cfg.leader} | 팀원: ${(cfg.members||[]).join(', ')}`;
   const chips = $('member-chips');
   chips.innerHTML = '';
   (cfg.members||[]).forEach(m => {
@@ -1292,7 +1292,7 @@ window.initFirebase = async function() {
       },
       err => { console.error('[Firebase] followups 읽기 오류:', err); }
     );
-    // 팀 설정(config) 실시간 동기화 — 총괄이 세팅하면 팀원 전원에게 반영
+    // 팀 설정(config) 실시간 동기화 — 팀장이 세팅하면 팀원 전원에게 반영
     const cfgDocRef = doc(db, 'meta', 'config');
     onSnapshot(cfgDocRef,
       snap => {
@@ -1311,7 +1311,7 @@ window.initFirebase = async function() {
       },
       err => { console.warn('[Firebase] config 읽기 오류', err); }
     );
-    // 총괄이면 현재 로컬 설정을 팀 설정 원본으로 업로드
+    // 팀장이면 현재 로컬 설정을 팀 설정 원본으로 업로드
     if (session.role === 'leader') {
       setDoc(cfgDocRef, {
         orgName: cfg.orgName||'', leader: cfg.leader||'', leaderPass: cfg.leaderPass||'',
@@ -1450,7 +1450,7 @@ window.selectSharedFolder = async function() {
     showToast(`공유폴더 연결됨: ${handle.name}`, 'success');
     console.log('[선택] 완료:', handle.name);
 
-    // 연결 즉시 1회 동기화 — 총괄은 팀원 업무 즉시 표시
+    // 연결 즉시 1회 동기화 — 팀장은 팀원 업무 즉시 표시
     try { await syncFromSharedFolder(true); } catch(se) { console.warn('[선택] 즉시 동기화 실패', se); }
 
   } catch(e) {
@@ -1667,7 +1667,7 @@ window.afterLogin = async function() {
   $('setup-modal')?.classList.add('hidden');
   $('login-modal')?.classList.add('hidden');
   $('app').classList.remove('hidden');
-  $('user-info').textContent = `👤 ${session.name} (${session.role==='leader'?'총괄 조회':'팀원'})`;
+  $('user-info').textContent = `👤 ${session.name} (${session.role==='leader'?'팀장':'팀원'})`;
   updateFolderButtons();
 
   if (cfg.storage === 'firebase') {
@@ -1693,7 +1693,7 @@ window.afterLogin = async function() {
           setSyncStatus('connected', savedHandle.name);
           updateFolderButtons();
           startAutoSync();
-          // 로그인 즉시 1회 동기화 — 총괄은 팀원 업무를 바로 확인
+          // 로그인 즉시 1회 동기화 — 팀장은 팀원 업무를 바로 확인
           try { await syncFromSharedFolder(true); } catch(se) { console.warn('[로그인] 즉시 동기화 실패', se); }
         } else {
           console.log('[로그인] 폴더 권한 없음 (다시 선택 필요)');
@@ -2528,9 +2528,9 @@ window.renderCurrentTab = function() {
 };
 
 // [9] 업무 데이터 백업·복원
-// 업무명이 비어 있는 잘못 등록된 업무 일괄 삭제 (총괄)
+// 업무명이 비어 있는 잘못 등록된 업무 일괄 삭제 (팀장)
 window.cleanupEmptyTasks = async function() {
-  if (session.role !== 'leader') { showToast('총괄만 사용할 수 있습니다.', 'info'); return; }
+  if (session.role !== 'leader') { showToast('팀장만 사용할 수 있습니다.', 'info'); return; }
   const targets = tasks.filter(t => !((t.name || '').trim()));
   if (!targets.length) { showToast('정리할 빈 업무가 없습니다.', 'info'); return; }
   if (!confirm(`업무명이 비어 있는 업무 ${targets.length}건을 삭제합니다.\n(이 작업은 되돌릴 수 없습니다)`)) return;
@@ -3088,7 +3088,7 @@ window.renderDashboard = function(cont) {
   cont.innerHTML = `
     <div class="exec-summary">
       <h2>📊 ${curMonth.replace('-','년 ')}월 팀 현황 대시보드</h2>
-      <div class="sub">경영기획팀 · 총괄 조회</div>
+      <div class="sub">경영기획팀 · 팀장</div>
       <div class="exec-kpi">
         <div class="exec-kpi-item"><div class="kv">${allTasks.filter(t=>(t.date||'').startsWith(curMonth)).length}</div><div class="kl">이번달 전체</div></div>
         <div class="exec-kpi-item"><div class="kv">${curRate !== null ? curRate+'%' : '-'}</div><div class="kl">완료율 ${trendBadge(curRate,prevRate)}</div></div>
@@ -3394,7 +3394,7 @@ window.openEdit = function(id) {
   const ei = $('edit-importance'); if (ei) ei.value = t.importance || imp;
   calcEditPriority();
 
-  // 총괄 전용 섹션
+  // 팀장 전용 섹션
   const leaderSec = $('leader-edit-section');
   if (leaderSec) {
     leaderSec.classList.toggle('hidden', session.role !== 'leader');
@@ -3475,12 +3475,12 @@ window.addTask = async function() {
   if (typeof autoSendIfFolder === 'function') autoSendIfFolder(); // [Phase9][2] 자동 전송
 };
 
-// ── 댓글 스레드 (총괄·팀원 양방향, 수정·삭제) ──
+// ── 댓글 스레드 (팀장·팀원 양방향, 수정·삭제) ──
 // 저장 배열(comments)을 정규화: 각 댓글에 cid 부여 + 레거시 adminComment 흡수
 function normalizeComments(t) {
   let arr = Array.isArray(t.comments) ? t.comments.map((c,i) => c.cid ? {...c} : {...c, cid:'c'+i+'_'+(c.at||'')}) : [];
   if (t.adminComment && !arr.some(c => c.role==='leader' && c.text===t.adminComment)) {
-    arr.unshift({ cid:'legacy', by:'총괄', role:'leader', text:t.adminComment, at:t.confirmedAt || '' });
+    arr.unshift({ cid:'legacy', by:'팀장', role:'leader', text:t.adminComment, at:t.confirmedAt || '' });
   }
   return arr;
 }
@@ -3490,7 +3490,7 @@ function commentThreadHTML(t) {
   const list = getComments(t);
   if (!list.length) return '<div style="color:var(--text-muted);font-size:13px;">아직 댓글이 없습니다.</div>';
   return list.map(c => {
-    const who = c.role === 'leader' ? '👑 총괄' : `👤 ${escHtml(c.by || '')}`;
+    const who = c.role === 'leader' ? '👑 팀장' : `👤 ${escHtml(c.by || '')}`;
     const when = c.at ? `<span style="color:var(--text-muted);font-size:11px;margin-left:6px;">${(c.at || '').slice(0,16).replace('T',' ')}${c.editedAt?' (수정됨)':''}</span>` : '';
     const canMod = session.role === 'leader' || c.by === session.name;
     const modBtns = canMod
@@ -3517,7 +3517,7 @@ window.toggleAdminComment = function(id) {
     if (t) { markCommentSeen(id, lastOthersCommentAt(t)); const b=$('comment-alert-banner'); if(b && unseenCommentTasks().length===0) b.remove(); }
   }
 };
-// 댓글 등록 — 총괄은 모든 업무, 팀원은 본인 업무에 답글
+// 댓글 등록 — 팀장은 모든 업무, 팀원은 본인 업무에 답글
 window.addComment = async function(id) {
   if (session.role === 'viewer') { showToast('열람 전용입니다.', 'info'); return; }
   const t = tasks.find(x => x.id === id);
@@ -3533,7 +3533,7 @@ window.addComment = async function(id) {
   showToast('댓글을 등록했습니다.', 'success');
   _reopenComment(id);
 };
-// 댓글 수정 — 작성자 또는 총괄
+// 댓글 수정 — 작성자 또는 팀장
 window.editComment = async function(id, cid) {
   if (session.role === 'viewer') return;
   const t = tasks.find(x => x.id === id); if (!t) return;
@@ -3548,7 +3548,7 @@ window.editComment = async function(id, cid) {
   showToast('댓글을 수정했습니다.', 'success');
   _reopenComment(id);
 };
-// 댓글 삭제 — 작성자 또는 총괄
+// 댓글 삭제 — 작성자 또는 팀장
 window.deleteComment = async function(id, cid) {
   if (session.role === 'viewer') return;
   const t = tasks.find(x => x.id === id); if (!t) return;
@@ -3562,7 +3562,7 @@ window.deleteComment = async function(id, cid) {
   _reopenComment(id);
 };
 
-// ── [19] 총괄 확인 토글 ──
+// ── [19] 팀장 확인 토글 ──
 window.toggleConfirm = async function(id) {
   const t = tasks.find(x => x.id === id);
   if (!t) return;
@@ -3916,7 +3916,7 @@ const TOUR_STEPS = [
   { ic:'📝', t:'1. 업무를 등록하세요', d:'"업무 등록"에서 업무명·분야·상태만 넣어도 됩니다. (상세 입력에서 긴급도·중요도를 고르면 우선순위가 자동 계산됩니다.)' },
   { ic:'📊', t:'2. 진행률을 관리하세요', d:'0/25/50/75/100% 버튼으로 빠르게 업데이트. 100%로 바꾸면 자동으로 완료 처리됩니다.' },
   { ic:'📑', t:'3. 보고서는 자동입니다', d:'"주간보고"·"월간보고" 탭에서 별도 작성 없이 보고서가 자동 생성됩니다. 보고에서 빼고 싶은 항목은 "제외"로 끌 수 있습니다.' },
-  { ic:'☁️', t:'4. 입력하면 끝, 자동 공유', d:'입력·수정은 실시간으로 자동 저장·공유됩니다. 별도 전송·백업 없이, 총괄·관계자 화면에 즉시 반영됩니다.' }
+  { ic:'☁️', t:'4. 입력하면 끝, 자동 공유', d:'입력·수정은 실시간으로 자동 저장·공유됩니다. 별도 전송·백업 없이, 팀장·관계자 화면에 즉시 반영됩니다.' }
 ];
 let _tourIdx = 0;
 window.startTour = function() {
@@ -4100,8 +4100,8 @@ window.afterLogin = async function() {
   if (session.role === 'member') generateRecurringTasks();
   checkBrowserCompat();
   // 사용자 역할 표시 보정
-  const labelMap = { leader:'총괄', exec:'관리자', viewer:'업무 현황 조회', member:'팀원' };
-  // 총괄·관리자는 개인 이름 없이 역할만 표시, 팀원은 이름+역할
+  const labelMap = { leader:'팀장', exec:'관리자', viewer:'업무 현황 조회', member:'팀원' };
+  // 팀장·관리자는 개인 이름 없이 역할만 표시, 팀원은 이름+역할
   $('user-info').textContent = (session.role==='member')
     ? `👤 ${session.name} (팀원)`
     : `👤 ${labelMap[session.role]||'팀원'}`;
@@ -4116,7 +4116,7 @@ const _p3ShowLogin = window.showLogin;
 window.showLogin = function() {
   _p3ShowLogin();
   const sub = $('login-subtitle');
-  if (sub) sub.textContent = `Work Trace · ${cfg.orgName||'경영기획팀'} | 총괄 | 팀원: ${(cfg.members||[]).join(', ')}`;
+  if (sub) sub.textContent = `Work Trace · ${cfg.orgName||'경영기획팀'} | 팀장 | 팀원: ${(cfg.members||[]).join(', ')}`;
 };
 
 // ── init 확장 (읽기전용 모드 + 브랜딩) ──
@@ -4147,7 +4147,7 @@ window.init = async function() {
   if (saved) { try { cfg = JSON.parse(saved); } catch(e){} }
 
   // ── 부트스트랩: 로컬 설정이 없으면 config.json(Firebase 키)로 팀 설정 자동 로드 ──
-  // → 초대 링크 없이도 URL만 접속하면 본인/총괄/업무현황조회 로그인 가능
+  // → 초대 링크 없이도 URL만 접속하면 본인/팀장/업무현황조회 로그인 가능
   if (!(cfg.leader && cfg.members && cfg.members.length > 0)) {
     try {
       const res = await fetch('config.json', { cache:'no-store' });
@@ -4160,7 +4160,7 @@ window.init = async function() {
             members: boot.members||[], memberParts: boot.memberParts||{},
             leaderPass: boot.leaderPass||'', firebase: boot.firebase
           };
-          // Firestore의 최신 팀 설정으로 보강(총괄이 올려둔 팀원·파트·총괄명) — 4초 타임아웃
+          // Firestore의 최신 팀 설정으로 보강(팀장이 올려둔 팀원·파트·팀장명) — 4초 타임아웃
           try {
             const team = await Promise.race([
               fetchTeamConfigFromFirebase(boot.firebase),
@@ -4356,7 +4356,7 @@ function injectCommentAlert() {
   banner.id = 'comment-alert-banner';
   banner.className = 'ro-banner';
   banner.style.cssText = 'background:#EBF4FF;border-color:#90CDF4;color:#2C5282;';
-  banner.innerHTML = `💬 <strong>총괄 코멘트 ${unseen.length}건</strong>이 도착했습니다. — `
+  banner.innerHTML = `💬 <strong>팀장 코멘트 ${unseen.length}건</strong>이 도착했습니다. — `
     + unseen.slice(0,3).map(t => `<a href="#" onclick="openEdit('${t.id}');return false;" style="color:#2B6CB0;text-decoration:underline;">${escHtml(t.name)}</a>`).join(', ')
     + (unseen.length > 3 ? ` 외 ${unseen.length-3}건` : '');
   cont.insertBefore(banner, cont.firstChild);
@@ -4723,7 +4723,7 @@ window.renderCurrentTab = function() {
   const _formSnap = captureAddForm();   // 입력 중 폼 상태 스냅샷
 
   // ① 역할·탭별 디스패치
-  // 업무 현황 조회(viewer)는 렌더링 동안 총괄과 동일하게 처리(내용 동일), 권한은 별도 가드로 차단
+  // 업무 현황 조회(viewer)는 렌더링 동안 팀장과 동일하게 처리(내용 동일), 권한은 별도 가드로 차단
   const _viewer = session.role === 'viewer';
   if (_viewer) session.role = 'leader';
   if (session.role === 'exec') {
@@ -4742,7 +4742,7 @@ window.renderCurrentTab = function() {
     const b = document.createElement('div');
     b.className = 'ro-banner';
     b.innerHTML = _viewer
-      ? '🔎 <strong>업무 현황 조회(열람 전용)</strong> — 총괄과 동일한 현황을 조회합니다. 수정·삭제는 불가합니다.'
+      ? '🔎 <strong>업무 현황 조회(열람 전용)</strong> — 팀장과 동일한 현황을 조회합니다. 수정·삭제는 불가합니다.'
       : '👁️ <strong>읽기 전용 모드</strong> — 이 화면은 열람용이며 수정할 수 없습니다.';
     cont.insertBefore(b, cont.firstChild);
   }
@@ -4789,7 +4789,7 @@ function saveFollowupsLocal() {
   localStorage.setItem('wrs_followups', JSON.stringify(followups));
 }
 
-// 공유폴더에 지시사항 저장(총괄) / 읽기(팀원·총괄)
+// 공유폴더에 지시사항 저장(팀장) / 읽기(팀원·팀장)
 async function saveFollowupsToFolder() {
   if (cfg.storage !== 'folder' || !sharedFolderHandle) return;
   try {
@@ -4938,7 +4938,7 @@ function fuActionCell(f, isLeader) {
   return isLeader
     ? `<button class="btn btn-outline btn-sm" onclick="openFollowup('${f.id}')">수정</button>
        <button class="btn btn-danger btn-sm" style="margin-top:4px;" onclick="delFollowup('${f.id}')">삭제</button>`
-    : `<span style="font-size:11px;color:var(--text-muted);">등록: ${escHtml(f.createdBy||'총괄')}</span>`;
+    : `<span style="font-size:11px;color:var(--text-muted);">등록: ${escHtml(f.createdBy||'팀장')}</span>`;
 }
 // 회의록(회의명) 단위로 묶어 표 형태로 출력
 function fuMeetingTables(list, isLeader, showAssignee) {
@@ -5162,7 +5162,7 @@ function fuExcludeBtn(t) {
 window.toggleReportExclude = function(id) {
   const t = tasks.find(x => x.id === id);
   if (!t) return;
-  // 담당자 본인 또는 총괄만 제외 가능
+  // 담당자 본인 또는 팀장만 제외 가능
   if (session.role !== 'leader' && t.member !== session.name) {
     showToast('본인 업무만 제외할 수 있습니다.', 'error'); return;
   }
@@ -5257,7 +5257,7 @@ async function uploadFollowupsToFirestore(list) {
   return ok;
 }
 
-// 지시사항 파일(들) 선택 → Firestore 업로드 (총괄)
+// 지시사항 파일(들) 선택 → Firestore 업로드 (팀장)
 window.migrateFollowupsFromFiles = function() {
   if (!(cfg.storage === 'firebase' && _fbRefs)) { showToast('먼저 Firebase 모드로 설정하세요.', 'warning'); return; }
   const inp = document.createElement('input');
@@ -5401,3 +5401,4 @@ init();
 </script>
 </body>
 </html>
+
