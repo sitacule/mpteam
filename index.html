@@ -2047,7 +2047,7 @@ function buildQuadrant(taskList) {
 }
 
 window.renderMyPriority = function(cont) {
-  const t = tasks.filter(t => t.member===session.name && !t.isArchived);
+  const t = tasks.filter(t => t.member===session.name && !t.isArchived && (t.name||'').trim());
   cont.innerHTML = `
     <div class="section-header-row"><h2>우선순위 4분면 (중요도 × 긴급도)</h2></div>
     <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;background:#EBF4FF;padding:8px 12px;border-radius:6px;">
@@ -2059,7 +2059,7 @@ window.renderMyPriority = function(cont) {
 const prioFilters = { member:'all' };
 window.renderPriority = function(cont) {
   if ($('prio-member-filter')) prioFilters.member = $('prio-member-filter').value;
-  let t = tasks.filter(x => !x.isArchived);
+  let t = tasks.filter(x => !x.isArchived && (x.name||'').trim());
   if (prioFilters.member !== 'all') t = t.filter(x => x.member===prioFilters.member);
   cont.innerHTML = `
     <div class="section-header-row">
