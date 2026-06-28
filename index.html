@@ -499,8 +499,18 @@ body.viewer-mode #send-btn{pointer-events:none;opacity:.6;}
   .matrix{grid-template-columns:1fr;}
   .form-row{grid-template-columns:1fr;}
   .storage-cards{grid-template-columns:1fr;}
-  .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
-  .task-table{min-width:700px;}
+  .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border:none;}
+  /* 모바일 카드형 조회: data-label이 있는 표는 행을 카드로 변환 */
+  .task-table{min-width:0;width:100%;}
+  .task-table thead{display:none;}
+  .task-table tbody tr{display:block;background:#fff;border:1px solid var(--border);border-radius:8px;margin-bottom:10px;padding:6px 10px;box-shadow:var(--shadow);}
+  .task-table tbody tr.acrow{padding:0;}
+  .task-table td{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;border:none;padding:5px 0;max-width:none!important;}
+  .task-table td[data-label]::before{content:attr(data-label);font-weight:700;color:var(--text-muted);font-size:11px;flex-shrink:0;min-width:64px;}
+  .task-table td:not([data-label]){display:block;}
+  .task-table td .task-name-cell{white-space:normal;text-align:right;}
+  .task-table .prog-wrap{min-width:120px;}
+  .task-table tbody tr.acrow td{display:block;}
   .filter-bar{gap:6px;}
   .filter-bar select,.filter-bar input{font-size:12px;padding:6px 8px;}
   .modal{padding:20px;}
@@ -2696,16 +2706,16 @@ window.renderMy = function(cont) {
       const od=isOverdue(t), ds=isDueSoon(t);
       const rowCls=od?'overdue':ds?'due-soon':t.status==='진행중'?'in-progress':'';
       return `<tr class="${rowCls}">
-        <td style="white-space:nowrap;">${fmt(t.date)}</td>
-        <td>${catBadge(t.category)}</td>
-        <td>${typeBadge(t.taskType)}</td>
-        <td style="max-width:260px;"><div class="task-name-cell" title="${escHtml(t.name)}">${escHtml(t.name)}</div>${t.desc?`<div style="color:var(--text-muted);font-size:12px;margin-top:2px;" title="${escHtml(t.desc)}">${escHtml(t.desc)}</div>`:''}</td>
-        <td style="min-width:80px;">${progBar(t.progress)}</td>
-        <td style="white-space:nowrap;">${fmt(t.due)}${od?'<br><span style="color:var(--accent);font-size:11px;">기한초과</span>':''}</td>
-        <td>${prioBadge(t.priority)}</td>
-        <td>${statusBadge(t.status)}</td>
-        <td style="color:var(--text-muted);font-size:12px;max-width:100px;">${escHtml(t.note||'')}</td>
-        <td style="white-space:nowrap;">
+        <td data-label="등록일" style="white-space:nowrap;">${fmt(t.date)}</td>
+        <td data-label="분야">${catBadge(t.category)}</td>
+        <td data-label="구분">${typeBadge(t.taskType)}</td>
+        <td data-label="업무명" style="max-width:260px;"><div class="task-name-cell" title="${escHtml(t.name)}">${escHtml(t.name)}</div>${t.desc?`<div style="color:var(--text-muted);font-size:12px;margin-top:2px;" title="${escHtml(t.desc)}">${escHtml(t.desc)}</div>`:''}</td>
+        <td data-label="진행률" style="min-width:80px;">${progBar(t.progress)}</td>
+        <td data-label="완료예정" style="white-space:nowrap;">${fmt(t.due)}${od?'<br><span style="color:var(--accent);font-size:11px;">기한초과</span>':''}</td>
+        <td data-label="우선순위">${prioBadge(t.priority)}</td>
+        <td data-label="상태">${statusBadge(t.status)}</td>
+        <td data-label="비고" style="color:var(--text-muted);font-size:12px;max-width:100px;">${escHtml(t.note||'')}</td>
+        <td data-label="관리" style="white-space:nowrap;">
           ${t.confirmedBy?`<div class="confirmed-badge" style="margin-bottom:4px;">✅ 확인됨</div>`:`<div class="unconfirmed-badge" style="margin-bottom:4px;">미확인</div>`}
           <button class="btn btn-sm" style="margin-bottom:4px;background:${commentCount(t)?'#EBF4FF;color:#2B6CB0':'#E2E8F0;color:#4A5568'};" onclick="toggleAdminComment('${t.id}')" title="댓글 보기/접기">💬 ${commentCount(t)}</button>
           <button class="btn btn-outline btn-sm" onclick="openEdit('${t.id}')">수정</button>
