@@ -3453,29 +3453,38 @@ window.addTask = async function() {
   if (typeof autoSendIfFolder === 'function') autoSendIfFolder(); // [Phase9][2] 자동 전송
 };
 
-// ── 댓글 스레드 (총괄·팀원 양방향) ──
-// 레거시 단일 adminComment를 스레드 첫 댓글로 흡수해 표시
-function getComments(t) {
-  const arr = Array.isArray(t.comments) ? t.comments.slice() : [];
-  if (t.adminComment && !arr.some(c => c.text === t.adminComment && c.role === 'leader')) {
-    arr.unshift({ by:'총괄', role:'leader', text:t.adminComment, at:t.confirmedAt || '' });
+// ── 댓글 스레드 (총괄·팀원 양방향, 수정·삭제) ──
+// 저장 배열(comments)을 정규화: 각 댓글에 cid 부여 + 레거시 adminComment 흡수
+function normalizeComments(t) {
+  let arr = Array.isArray(t.comments) ? t.comments.map((c,i) => c.cid ? {...c} : {...c, cid:'c'+i+'_'+(c.at||'')}) : [];
+  if (t.adminComment && !arr.some(c => c.role==='leader' && c.text===t.adminComment)) {
+    arr.unshift({ cid:'legacy', by:'총괄', role:'leader', text:t.adminComment, at:t.confirmedAt || '' });
   }
   return arr;
 }
+function getComments(t) { return normalizeComments(t); }
 function commentCount(t) { return getComments(t).length; }
 function commentThreadHTML(t) {
   const list = getComments(t);
   if (!list.length) return '<div style="color:var(--text-muted);font-size:13px;">아직 댓글이 없습니다.</div>';
   return list.map(c => {
     const who = c.role === 'leader' ? '👑 총괄' : `👤 ${escHtml(c.by || '')}`;
-    const when = c.at ? `<span style="color:var(--text-muted);font-size:11px;margin-left:6px;">${(c.at || '').slice(0,16).replace('T',' ')}</span>` : '';
+    const when = c.at ? `<span style="color:var(--text-muted);font-size:11px;margin-left:6px;">${(c.at || '').slice(0,16).replace('T',' ')}${c.editedAt?' (수정됨)':''}</span>` : '';
+    const canMod = session.role === 'leader' || c.by === session.name;
+    const modBtns = canMod
+      ? `<span style="margin-left:8px;white-space:nowrap;">
+           <a href="#" onclick="editComment('${t.id}','${c.cid}');return false;" style="color:var(--info);text-decoration:none;font-size:11px;">✏️ 수정</a>
+           <a href="#" onclick="deleteComment('${t.id}','${c.cid}');return false;" style="color:var(--accent);text-decoration:none;font-size:11px;margin-left:6px;">🗑 삭제</a>
+         </span>` : '';
     return `<div style="padding:6px 0;border-bottom:1px dashed var(--border);font-size:13px;">
-      <strong style="color:${c.role==='leader'?'var(--info)':'var(--primary)'};">${who}</strong>${when}
+      <strong style="color:${c.role==='leader'?'var(--info)':'var(--primary)'};">${who}</strong>${when}${modBtns}
       <div style="margin-top:2px;line-height:1.5;">${escHtml(c.text)}</div>
     </div>`;
   }).join('');
 }
-// 댓글 영역 펼침/접힘 (재렌더 없이 해당 행만). 팀원이 열면 '본 것'으로 표시.
+function _reopenComment(id){ setTimeout(()=>{ const r=document.getElementById('acrow-'+id); if(r) r.style.display='table-row'; }, 60); }
+
+// 댓글 영역 펼침/접힘. 팀원이 열면 '본 것'으로 표시.
 window.toggleAdminComment = function(id) {
   const r = document.getElementById('acrow-' + id);
   if (!r) return;
@@ -3495,15 +3504,40 @@ window.addComment = async function(id) {
   const text = prompt(`💬 "${t.name}"\n댓글을 입력하세요.`, '');
   if (text === null) return;
   const v = text.trim(); if (!v) return;
-  let comments = Array.isArray(t.comments) ? t.comments.slice() : [];
-  if (t.adminComment && !comments.some(c => c.text === t.adminComment && c.role === 'leader')) {
-    comments.unshift({ by:'총괄', role:'leader', text:t.adminComment, at:t.confirmedAt || new Date().toISOString() });
-  }
-  comments.push({ by: session.name, role: session.role, text: v, at: new Date().toISOString() });
+  let comments = normalizeComments(t);
+  comments.push({ cid: uid(), by: session.name, role: session.role, text: v, at: new Date().toISOString() });
   await upd(id, { comments, adminComment: '' });
-  // 내가 단 댓글은 '본 것'으로 처리
   markCommentSeen(id, lastOthersCommentAt(tasks.find(x=>x.id===id)||t));
   showToast('댓글을 등록했습니다.', 'success');
+  _reopenComment(id);
+};
+// 댓글 수정 — 작성자 또는 총괄
+window.editComment = async function(id, cid) {
+  if (session.role === 'viewer') return;
+  const t = tasks.find(x => x.id === id); if (!t) return;
+  let comments = normalizeComments(t);
+  const c = comments.find(x => x.cid === cid); if (!c) return;
+  if (session.role !== 'leader' && c.by !== session.name) { showToast('본인 댓글만 수정할 수 있습니다.', 'info'); return; }
+  const nv = prompt('댓글 수정', c.text);
+  if (nv === null) return;
+  if (!nv.trim()) { return deleteComment(id, cid); }
+  c.text = nv.trim(); c.editedAt = new Date().toISOString(); if (c.cid === 'legacy') c.cid = uid();
+  await upd(id, { comments, adminComment: '' });
+  showToast('댓글을 수정했습니다.', 'success');
+  _reopenComment(id);
+};
+// 댓글 삭제 — 작성자 또는 총괄
+window.deleteComment = async function(id, cid) {
+  if (session.role === 'viewer') return;
+  const t = tasks.find(x => x.id === id); if (!t) return;
+  let comments = normalizeComments(t);
+  const c = comments.find(x => x.cid === cid); if (!c) return;
+  if (session.role !== 'leader' && c.by !== session.name) { showToast('본인 댓글만 삭제할 수 있습니다.', 'info'); return; }
+  if (!confirm('이 댓글을 삭제하시겠습니까?')) return;
+  comments = comments.filter(x => x.cid !== cid);
+  await upd(id, { comments, adminComment: '' });
+  showToast('댓글을 삭제했습니다.', 'info');
+  _reopenComment(id);
 };
 
 // ── [19] 총괄 확인 토글 ──
