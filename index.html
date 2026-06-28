@@ -241,6 +241,7 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:var
 /* Weekly report */
 .report-wrap{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);}
 .report-header{border-bottom:3px solid var(--primary);padding-bottom:12px;margin-bottom:20px;}
+.report-logo{height:34px;width:auto;display:block;margin-bottom:8px;}
 .report-title{font-size:22px;font-weight:700;color:var(--primary);}
 .report-meta{color:var(--text-muted);font-size:13px;margin-top:4px;}
 .report-section{margin-bottom:20px;}
@@ -795,6 +796,23 @@ body.viewer-mode #send-btn{pointer-events:none;opacity:.6;}
         <button class="btn btn-ghost" onclick="closeModal('edit-modal')">취소</button>
         <button class="btn btn-primary" onclick="saveEdit()">💾 저장</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Comment Modal -->
+<div id="comment-modal" class="modal-overlay hidden">
+  <div class="modal">
+    <h2>💬 댓글</h2>
+    <p class="subtitle" id="comment-modal-sub"></p>
+    <input type="hidden" id="comment-task-id">
+    <input type="hidden" id="comment-cid">
+    <div class="form-group">
+      <textarea id="comment-text" rows="4" placeholder="댓글을 입력하세요. (여러 줄 입력 가능)"></textarea>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <button class="btn btn-ghost" onclick="closeModal('comment-modal')">취소</button>
+      <button class="btn btn-primary" onclick="saveCommentModal()">💾 저장</button>
     </div>
   </div>
 </div>
@@ -2240,6 +2258,7 @@ window.renderWeekly = function(cont) {
   cont.innerHTML = `
     <div class="report-wrap">
       <div class="report-header">
+        <img src="logo.png" alt="" class="report-logo" onerror="this.style.display='none'">
         <div class="report-title">주간업무보고</div>
         <div class="report-meta">경영기획팀 · ${rangeLabel}</div>
       </div>
@@ -2367,6 +2386,7 @@ window.renderMonthlyReport = function(cont) {
   cont.innerHTML = `
     <div class="report-wrap pptx-report">
       <div class="report-header">
+        <img src="logo.png" alt="" class="report-logo" onerror="this.style.display='none'">
         <div class="report-title">${titleDate}</div>
         <div class="report-meta">경영기획팀 월간업무보고</div>
       </div>
@@ -3291,6 +3311,7 @@ window.renderMonthlyReport = function(cont) {
   // 커버 페이지 (인쇄 시 첫 장) — 항목 12
   const coverPage = `
     <div class="cover-page">
+      <img src="logo.png" alt="" style="height:48px;width:auto;margin:0 auto 20px;display:block;" onerror="this.style.display='none'">
       <h1>${cfg.orgName || '경영기획팀'}</h1>
       <div class="cover-sub">${titleDate}</div>
       <div class="cover-meta">
@@ -3310,6 +3331,7 @@ window.renderMonthlyReport = function(cont) {
     ${coverPage}
     <div class="report-wrap pptx-report">
       <div class="report-header">
+        <img src="logo.png" alt="" class="report-logo" onerror="this.style.display='none'">
         <div class="report-title">${titleDate}</div>
         <div class="report-meta">경영기획팀 월간업무보고</div>
       </div>
@@ -3518,34 +3540,48 @@ window.toggleAdminComment = function(id) {
   }
 };
 // 댓글 등록 — 팀장은 모든 업무, 팀원은 본인 업무에 답글
-window.addComment = async function(id) {
+// 댓글 작성 모달 열기 — 작성자/팀장
+window.addComment = function(id) {
   if (session.role === 'viewer') { showToast('열람 전용입니다.', 'info'); return; }
   const t = tasks.find(x => x.id === id);
   if (!t) return;
   if (session.role === 'member' && t.member !== session.name) { showToast('본인 업무에만 댓글을 달 수 있습니다.', 'info'); return; }
-  const text = prompt(`💬 "${t.name}"\n댓글을 입력하세요.`, '');
-  if (text === null) return;
-  const v = text.trim(); if (!v) return;
-  let comments = normalizeComments(t);
-  comments.push({ cid: uid(), by: session.name, role: session.role, text: v, at: new Date().toISOString() });
-  await upd(id, { comments, adminComment: '' });
-  markCommentSeen(id, lastOthersCommentAt(tasks.find(x=>x.id===id)||t));
-  showToast('댓글을 등록했습니다.', 'success');
-  _reopenComment(id);
+  $('comment-task-id').value = id; $('comment-cid').value = '';
+  $('comment-modal-sub').textContent = `[${t.member}] ${t.name}`;
+  $('comment-text').value = '';
+  $('comment-modal').classList.remove('hidden');
+  setTimeout(()=>$('comment-text').focus(), 50);
 };
-// 댓글 수정 — 작성자 또는 팀장
-window.editComment = async function(id, cid) {
+// 댓글 수정 모달 열기 — 작성자 또는 팀장
+window.editComment = function(id, cid) {
   if (session.role === 'viewer') return;
   const t = tasks.find(x => x.id === id); if (!t) return;
-  let comments = normalizeComments(t);
-  const c = comments.find(x => x.cid === cid); if (!c) return;
+  const c = normalizeComments(t).find(x => x.cid === cid); if (!c) return;
   if (session.role !== 'leader' && c.by !== session.name) { showToast('본인 댓글만 수정할 수 있습니다.', 'info'); return; }
-  const nv = prompt('댓글 수정', c.text);
-  if (nv === null) return;
-  if (!nv.trim()) { return deleteComment(id, cid); }
-  c.text = nv.trim(); c.editedAt = new Date().toISOString(); if (c.cid === 'legacy') c.cid = uid();
+  $('comment-task-id').value = id; $('comment-cid').value = cid;
+  $('comment-modal-sub').textContent = `[${t.member}] ${t.name} — 댓글 수정`;
+  $('comment-text').value = c.text || '';
+  $('comment-modal').classList.remove('hidden');
+  setTimeout(()=>$('comment-text').focus(), 50);
+};
+// 모달 저장(작성/수정 공용)
+window.saveCommentModal = async function() {
+  const id = $('comment-task-id').value;
+  const cid = $('comment-cid').value;
+  const v = ($('comment-text').value || '').trim();
+  const t = tasks.find(x => x.id === id); if (!t) return;
+  if (!v) { if (cid) { closeModal('comment-modal'); return deleteComment(id, cid); } showToast('내용을 입력하세요.', 'warning'); return; }
+  let comments = normalizeComments(t);
+  if (cid) {
+    const c = comments.find(x => x.cid === cid); if (!c) return;
+    c.text = v; c.editedAt = new Date().toISOString(); if (c.cid === 'legacy') c.cid = uid();
+  } else {
+    comments.push({ cid: uid(), by: session.name, role: session.role, text: v, at: new Date().toISOString() });
+  }
   await upd(id, { comments, adminComment: '' });
-  showToast('댓글을 수정했습니다.', 'success');
+  if (!cid) markCommentSeen(id, lastOthersCommentAt(tasks.find(x=>x.id===id)||t));
+  closeModal('comment-modal');
+  showToast(cid ? '댓글을 수정했습니다.' : '댓글을 등록했습니다.', 'success');
   _reopenComment(id);
 };
 // 댓글 삭제 — 작성자 또는 팀장
@@ -5197,8 +5233,8 @@ function extractTasksFromJson(data) {
       });
     }
   }
-  // 실제 업무로 보이는 것만(이름/담당자/상태/분야 중 하나라도 존재)
-  return out.filter(t => t && (t.name || t.member || t.status || t.category));
+  // [입구 검증] 업무명이 있는 항목만 업로드 — 빈 업무 재발 차단
+  return out.filter(t => t && (t.name || '').trim());
 }
 
 async function uploadTasksToFirestore(taskList) {
