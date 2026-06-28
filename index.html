@@ -3146,6 +3146,51 @@ window.initMonthlyReport = function(cont) {
   renderMonthlyReport(cont);
 };
 
+// 분기 종합 섹션 — mrMonth가 속한 분기(3개월) 집계
+function quarterSummary(members, monthStr) {
+  const [y, m] = monthStr.split('-').map(Number);
+  const q = Math.floor((m - 1) / 3);
+  const startM = q * 3 + 1;
+  const months = [0,1,2].map(i => `${y}-${String(startM + i).padStart(2,'0')}`);
+  const qTasks = tasks.filter(t => members.includes(t.member) && months.some(mm => (t.date||'').startsWith(mm)) && !t.reportExcluded);
+  const total = qTasks.length;
+  const done = qTasks.filter(t => t.status === '처리완료').length;
+  const overdue = qTasks.filter(isOverdue).length;
+  const rate = total ? Math.round(done / total * 100) : 0;
+  const monthly = months.map(mm => {
+    const mt = qTasks.filter(t => (t.date||'').startsWith(mm));
+    const d = mt.filter(t => t.status === '처리완료').length;
+    return { label: `${parseInt(mm.split('-')[1])}월`, total: mt.length, done: d, rate: mt.length ? Math.round(d/mt.length*100) : 0 };
+  });
+  const top = [
+    ...qTasks.filter(t => t.taskType === '중점' && t.status === '처리완료'),
+    ...qTasks.filter(t => t.taskType !== '중점' && t.status === '처리완료')
+  ].slice(0, 5);
+  const bars = monthly.map(mo => `
+    <div style="text-align:center;flex:1;">
+      <div style="font-size:11px;opacity:.85;margin-bottom:4px;">${mo.label} (${mo.done}/${mo.total})</div>
+      <div style="height:80px;display:flex;align-items:flex-end;justify-content:center;">
+        <div style="width:36px;background:#68D391;border-radius:4px 4px 0 0;height:${Math.max(4, mo.rate*0.8)}px;"></div>
+      </div>
+      <div style="font-size:13px;font-weight:700;margin-top:4px;">${mo.rate}%</div>
+    </div>`).join('');
+  return `<div class="exec-summary" style="margin-bottom:24px;background:linear-gradient(135deg,#234E52,#285E61);">
+    <h2>🗓️ ${y}년 ${q+1}분기 종합</h2>
+    <div class="sub">${months[0].replace('-','.')} ~ ${months[2].replace('-','.')} · 3개월 합산</div>
+    <div class="exec-kpi">
+      <div class="exec-kpi-item"><div class="kv">${nf(total)}</div><div class="kl">분기 전체</div></div>
+      <div class="exec-kpi-item"><div class="kv">${rate}%</div><div class="kl">완료율</div></div>
+      <div class="exec-kpi-item"><div class="kv" style="color:#68D391;">${nf(done)}</div><div class="kl">완료</div></div>
+      <div class="exec-kpi-item"><div class="kv" style="color:#FC8181;">${overdue}</div><div class="kl">기한초과</div></div>
+    </div>
+    <div style="display:flex;gap:16px;align-items:flex-end;margin:8px 0 16px;background:rgba(255,255,255,0.08);border-radius:8px;padding:14px;">${bars}</div>
+    <div class="exec-list">
+      <h4>🏆 분기 주요 성과</h4>
+      ${top.length ? top.map(t=>`<div class="exec-list-item">${catBadge(t.category)} [${escHtml(t.member)}] ${escHtml(t.name)}</div>`).join('') : '<div class="exec-list-item" style="opacity:.6;">완료된 업무가 없습니다</div>'}
+    </div>
+  </div>`;
+}
+
 window.renderMonthlyReport = function(cont) {
   if ($('mr-month')) mrMonth = $('mr-month').value || mrMonth;
   if ($('mr-member')) mrFilters.member = $('mr-member').value;
@@ -3339,11 +3384,13 @@ window.renderMonthlyReport = function(cont) {
         <label style="font-weight:600;color:var(--primary);">보고 연월</label>
         <input type="month" id="mr-month" value="${mrMonth}" onchange="mrMonth=this.value;renderMonthlyReport($('content'))">
         ${memberSel}
+        <button class="btn btn-sm ${window._mrQuarter?'btn-primary':'btn-ghost'}" onclick="window._mrQuarter=!window._mrQuarter;renderMonthlyReport($('content'))" title="해당 분기(3개월) 종합 보기">📊 분기 종합</button>
         <div style="flex:1;"></div>
         <button class="btn btn-outline btn-sm" onclick="window.print()">🖨️ 인쇄</button>
         <button class="btn btn-ghost btn-sm" onclick="exportCSV()">📊 CSV</button>
       </div>
       ${ikmolWarn}
+      ${window._mrQuarter ? quarterSummary(targetMembers, mrMonth) : ''}
       ${execSummary}
       <div style="font-size:12px;color:var(--text-muted);margin-bottom:20px;background:#EBF4FF;padding:10px 14px;border-radius:6px;">
         <span style="background:#FED7D7;padding:2px 6px;border-radius:3px;margin-right:6px;">중점</span>
