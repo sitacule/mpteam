@@ -2528,6 +2528,27 @@ window.renderCurrentTab = function() {
 };
 
 // [9] 업무 데이터 백업·복원
+// 업무명이 비어 있는 잘못 등록된 업무 일괄 삭제 (총괄)
+window.cleanupEmptyTasks = async function() {
+  if (session.role !== 'leader') { showToast('총괄만 사용할 수 있습니다.', 'info'); return; }
+  const targets = tasks.filter(t => !((t.name || '').trim()));
+  if (!targets.length) { showToast('정리할 빈 업무가 없습니다.', 'info'); return; }
+  if (!confirm(`업무명이 비어 있는 업무 ${targets.length}건을 삭제합니다.\n(이 작업은 되돌릴 수 없습니다)`)) return;
+  if (cfg.storage === 'firebase' && _fbRefs && _fbRefs.colRef) {
+    let ok = 0;
+    for (const t of targets) {
+      try { await _fbRefs.deleteDoc(_fbRefs.doc(_fbRefs.colRef, t.id)); ok++; } catch(e) { console.error('[정리] 삭제 실패', e); }
+    }
+    showToast(`빈 업무 ${ok}건 삭제 완료`, 'success');
+  } else {
+    const ids = new Set(targets.map(t => t.id));
+    tasks = tasks.filter(t => !ids.has(t.id));
+    saveLocal();
+    renderCurrentTab();
+    showToast(`빈 업무 ${targets.length}건 삭제 완료`, 'success');
+  }
+};
+
 window.backupTasks = function() {
   const blob = new Blob([JSON.stringify({ tasks, exportedAt: new Date().toISOString() }, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
@@ -2864,6 +2885,7 @@ window.renderAll = function(cont) {
         <button class="btn btn-outline btn-sm" onclick="backupTasks()">💾 백업 (JSON)</button>
         <button class="btn btn-ghost btn-sm" onclick="restoreTasks()">📂 복원</button>
         <button class="btn btn-outline btn-sm" onclick="exportCSV()">📊 CSV 내보내기</button>
+        <button class="btn btn-danger btn-sm" onclick="cleanupEmptyTasks()" title="업무명이 비어 있는 잘못 등록된 업무를 일괄 삭제">🧹 빈 업무 정리</button>
         ${cfg.storage==='firebase'?`<button class="btn btn-accent btn-sm" onclick="migrateFromFolder()" title="공유폴더를 선택하면 모든 팀원 업무 파일을 한 번에 Firebase로 업로드">☁️ 공유폴더 일괄 마이그레이션</button><button class="btn btn-outline btn-sm" onclick="migrateFromFiles()" title="백업 JSON 파일들을 직접 선택해 업로드">☁️ 파일 선택 마이그레이션</button>`:''}
       </div>
     </div>
