@@ -156,6 +156,46 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:var
 .prog-fill{height:8px;border-radius:10px;background:var(--primary);transition:width .3s;}
 .prog-fill.done{background:var(--success);}
 .prog-fill.low{background:var(--warning);}
+/* 행에서 진행률·완료 1클릭 [개선#1] */
+.prog-quick{display:flex;gap:3px;justify-content:center;margin-top:4px;}
+.pq-btn{width:22px;height:20px;line-height:1;padding:0;border:1px solid var(--border,#CBD5E0);background:#fff;border-radius:5px;cursor:pointer;font-size:12px;color:var(--text,#2D3748);transition:background .15s,border-color .15s;}
+.pq-btn:hover{background:#EDF2F7;border-color:var(--primary);}
+.pq-btn.pq-done{background:var(--success);border-color:var(--success);color:#fff;}
+@media print{.prog-quick{display:none !important;}}
+/* 이월(지난달에서 넘어온 미완료) 배지 [개선#4] */
+.badge-carry{display:inline-block;margin-top:3px;background:#FFF3E0;color:#C05621;border:1px solid #F6AD55;font-size:11px;font-weight:600;padding:1px 6px;border-radius:8px;}
+/* 이번 달 미보고 팀원 배너 [개선 A-1] */
+.nr-banner{background:#FFF5F5;border:1px solid #FEB2B2;border-left:4px solid #E53E3E;border-radius:10px;padding:14px 16px;margin-bottom:16px;}
+.nr-banner h3{margin:0 0 10px;font-size:15px;color:#C53030;display:flex;align-items:center;gap:8px;}
+.nr-count{background:#E53E3E;color:#fff;border-radius:10px;padding:1px 9px;font-size:12px;}
+.nr-list{display:flex;flex-wrap:wrap;gap:8px;}
+.nr-chip{display:inline-flex;flex-direction:column;background:#fff;border:1px solid #FEB2B2;border-radius:8px;padding:5px 10px;font-size:13px;font-weight:600;color:#2D3748;}
+.nr-sub{font-size:11px;font-weight:400;color:var(--text-muted);margin-top:1px;}
+.nr-hint{margin-top:10px;font-size:12px;color:var(--text-muted);}
+/* 마감 준수 현황 [개선 C-2] */
+.sla-row{display:flex;flex-wrap:wrap;gap:10px;}
+.sla-stat{flex:1;min-width:110px;text-align:center;padding:12px 8px;border-radius:10px;background:#F7FAFC;border:1px solid var(--border,#E2E8F0);}
+.sla-stat b{display:block;font-size:24px;font-weight:700;line-height:1.1;}
+.sla-stat span{font-size:12px;color:var(--text-muted);}
+.sla-stat.ok b{color:#38A169;} .sla-stat.late b{color:#D69E2E;} .sla-stat.miss b{color:#E53E3E;} .sla-stat.rate b{color:#4299E1;}
+/* 다중선택 일괄 작업 바 [개선 N-6] */
+.bulk-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#EBF8FF;border:1px solid #90CDF4;border-radius:8px;padding:8px 12px;margin-bottom:10px;}
+.bulk-bar b{color:#2B6CB0;}
+@media print{.bulk-bar,.bulk-cb,.task-table.has-bulk thead th:first-child,.task-table.has-bulk tbody td:first-child{display:none !important;}}
+/* 하루 1회 요약 알림 배너 [개선 N-3] */
+.digest-bar{position:fixed;left:50%;bottom:20px;transform:translate(-50%,80px);z-index:9000;display:flex;align-items:center;gap:14px;background:#2D3748;color:#fff;border-radius:12px;padding:11px 16px;box-shadow:0 8px 28px rgba(0,0,0,.25);font-size:13px;max-width:92vw;opacity:0;transition:transform .3s,opacity .3s;}
+.digest-bar.show{transform:translate(-50%,0);opacity:1;}
+.digest-bar.urgent{background:#C53030;}
+.digest-bar button{background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:6px;width:24px;height:24px;cursor:pointer;font-size:13px;flex-shrink:0;}
+.digest-bar button:hover{background:rgba(255,255,255,.35);}
+@media print{.digest-bar{display:none !important;}}
+/* 1페이지 요약 인쇄 격리 — op-print-mode일 때 본문 숨기고 요약만 출력 [개선 N-5] */
+@media print{
+  body.op-print-mode > *:not(#onepager-overlay){display:none !important;}
+  body.op-print-mode #onepager-overlay{position:static !important;background:#fff !important;padding:0 !important;overflow:visible !important;}
+  body.op-print-mode #onepager-overlay .op-toolbar{display:none !important;}
+  body.op-print-mode #onepager-overlay .op-sheet{max-width:none !important;border-radius:0 !important;padding:0 !important;}
+}
 
 /* Priority matrix */
 .matrix{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
@@ -1007,6 +1047,17 @@ function isDueSoon(t) {
   const diff = (new Date(t.due) - new Date(today())) / 86400000;
   return diff >= 0 && diff <= 7;
 }
+// 지난달에서 넘어온 미완료 업무 여부 (익월 계획·완료·아카이브 제외) [개선#4]
+function isCarryover(t) {
+  if (t.status === '처리완료' || t.taskType === '익월' || t.isArchived) return false;
+  const d = (t.date||'').slice(0,7);
+  return !!d && d < getCurrentMonth();
+}
+function carryoverBadge(t) {
+  if (!isCarryover(t)) return '';
+  const days = Math.max(0, Math.floor((Date.now() - new Date(t.date)) / 86400000));
+  return `<span class="badge-carry" title="지난달에서 이월된 미완료 업무 · 등록 후 ${days}일 경과">⏳ 이월 ${days}일째</span>`;
+}
 function getCurrentMonth() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
@@ -1032,6 +1083,78 @@ function progBar(v) {
   const cls = v >= 100 ? 'done' : v < 30 ? 'low' : '';
   return `<div class="prog-wrap"><div class="prog-fill ${cls}" style="width:${v}%"></div></div><div style="font-size:11px;text-align:center;margin-top:2px;color:var(--text-muted);">${v}%</div>`;
 }
+// 행에서 모달 없이 진행률·완료를 1클릭으로 조정 [개선#1]
+function progInline(t) {
+  const done = t.status === '처리완료';
+  return `${progBar(t.progress)}
+    <div class="prog-quick">
+      <button class="pq-btn" title="-25%" onclick="bumpProgress('${t.id}',-25)">−</button>
+      <button class="pq-btn" title="+25%" onclick="bumpProgress('${t.id}',25)">＋</button>
+      <button class="pq-btn ${done?'pq-done':''}" title="${done?'완료 취소':'완료 처리'}" onclick="toggleDone('${t.id}')">${done?'↩':'✓'}</button>
+    </div>`;
+}
+window.bumpProgress = function(id, delta) {
+  const t = tasks.find(x => x.id === id);
+  if (!t) return;
+  if (session.role === 'member' && t.member !== session.name) { showToast('본인 업무만 변경할 수 있습니다.', 'info'); return; }
+  const prevProg = parseInt(t.progress)||0, prevStat = t.status||'진행중';
+  const v = Math.min(100, Math.max(0, prevProg + delta));
+  if (v === prevProg) return;
+  const fields = { progress: v };
+  if (v >= 100) fields.status = '처리완료';
+  else if (prevStat === '처리완료') fields.status = '진행중'; // 완료였다가 내려가면 진행중 복귀
+  upd(id, fields);
+  // [개선 N-4] 실수 클릭 되돌리기 (이전 값을 리터럴로 구워 전달)
+  showUndoToast(`진행률 ${v}%로 변경했습니다.`, new Function(`upd(${JSON.stringify(id)}, ${JSON.stringify({progress:prevProg, status:prevStat})});`));
+};
+window.toggleDone = function(id) {
+  const t = tasks.find(x => x.id === id);
+  if (!t) return;
+  if (session.role === 'member' && t.member !== session.name) { showToast('본인 업무만 변경할 수 있습니다.', 'info'); return; }
+  const prevProg = parseInt(t.progress)||0, prevStat = t.status||'진행중';
+  if (prevStat === '처리완료') upd(id, { status: '진행중', progress: prevProg >= 100 ? 75 : prevProg });
+  else upd(id, { status: '처리완료', progress: 100 });
+  // [개선 N-4] 되돌리기
+  showUndoToast(prevStat==='처리완료'?'완료를 취소했습니다.':'완료 처리했습니다.', new Function(`upd(${JSON.stringify(id)}, ${JSON.stringify({progress:prevProg, status:prevStat})});`));
+};
+// ── 다중선택 일괄처리 [개선 N-6] ──
+window._bulkSel = window._bulkSel || new Set();
+function bulkOwn(id){ const t = tasks.find(x => x.id === id); return t && (session.role !== 'member' || t.member === session.name); }
+window.toggleSel = function(id, on){ on ? window._bulkSel.add(id) : window._bulkSel.delete(id); updateBulkBar(); };
+window.toggleSelAll = function(on){
+  document.querySelectorAll('.bulk-cb').forEach(cb => { cb.checked = on; const id = cb.getAttribute('data-id'); if (id) on ? window._bulkSel.add(id) : window._bulkSel.delete(id); });
+  updateBulkBar();
+};
+function updateBulkBar(){
+  const bar = document.getElementById('bulk-bar'); if (!bar) return;
+  const n = window._bulkSel.size;
+  bar.classList.toggle('hidden', n === 0);
+  const c = document.getElementById('bulk-count'); if (c) c.textContent = n;
+}
+window.clearSel = function(){ window._bulkSel.clear(); renderCurrentTab(); };
+window.bulkComplete = async function(){
+  const ids = [...window._bulkSel].filter(bulkOwn);
+  if (!ids.length) { showToast('선택된 항목이 없습니다.', 'info'); return; }
+  for (const id of ids) await upd(id, { status:'처리완료', progress:100 });
+  window._bulkSel.clear(); showToast(`${ids.length}건 완료 처리했습니다.`, 'success'); renderCurrentTab();
+};
+window.bulkCarry = async function(){
+  const nm = getNextMonth(getCurrentMonth());
+  const ids = [...window._bulkSel].filter(id => { const t = tasks.find(x=>x.id===id); return t && t.status!=='처리완료' && bulkOwn(id); });
+  if (!ids.length) { showToast('이월할 항목이 없습니다. (완료 건 제외)', 'info'); return; }
+  for (const id of ids) await upd(id, { date: nm + '-01' });
+  window._bulkSel.clear(); showToast(`${ids.length}건을 ${nm}로 이월했습니다.`, 'success'); renderCurrentTab();
+};
+window.bulkDelete = async function(){
+  const ids = [...window._bulkSel].filter(bulkOwn);
+  if (!ids.length) { showToast('선택된 항목이 없습니다.', 'info'); return; }
+  if (!confirm(`선택한 ${ids.length}건을 삭제합니다. 되돌릴 수 없습니다.`)) return;
+  for (const id of ids) {
+    if (cfg.storage === 'firebase' && _fbRefs) { try { await _fbRefs.deleteDoc(_fbRefs.doc(_fbRefs.colRef, id)); } catch(e) {} }
+    const i = tasks.findIndex(x => x.id === id); if (i >= 0) tasks.splice(i, 1);
+  }
+  saveLocal(); window._bulkSel.clear(); showToast(`${ids.length}건 삭제했습니다.`, 'info'); renderCurrentTab();
+};
 
 // ===================== TOAST =====================
 function showToast(msg, type='info') {
@@ -1303,7 +1426,7 @@ window.initFirebase = async function() {
         tasks = snap.docs.map(d => ({ id:d.id, ...d.data() }));
         tasks.sort((a,b) => (a.createdAt||0) - (b.createdAt||0));
         console.log('[Firebase] tasks 수신:', tasks.length, '건');
-        renderCurrentTab();
+        scheduleRender();
       },
       err => {
         console.error('[Firebase] tasks 읽기 오류:', err);
@@ -1316,7 +1439,7 @@ window.initFirebase = async function() {
       snap => {
         followups = snap.docs.map(d => ({ id:d.id, ...d.data() }));
         saveFollowupsLocal();
-        if (currentTab != null) renderCurrentTab();
+        if (currentTab != null) scheduleRender();
       },
       err => { console.error('[Firebase] followups 읽기 오류:', err); }
     );
@@ -1801,6 +1924,13 @@ window.renderCurrentTab = function() {
 
 // Alias for old usages
 window.refresh = window.renderCurrentTab;
+
+// 실시간 스냅샷용 렌더 코얼레싱 — 다건 동시 변경(일괄처리 등)을 1회 렌더로 합침 [개선 N-7]
+let _renderTimer = null;
+function scheduleRender() {
+  if (_renderTimer) return;
+  _renderTimer = setTimeout(() => { _renderTimer = null; renderCurrentTab(); }, 120);
+}
 
 // ===================== CRUD =====================
 // addTask 최종 정의는 PHASE 3 ADDITIONS, del 최종 정의는 PHASE 1 ADDITIONS 참조 [Phase6 정리]
@@ -2694,7 +2824,7 @@ window.renderMy = function(cont) {
 
   let rows = '';
   if (filtered.length === 0) {
-    rows = `<tr><td colspan="10"><div class="empty-state"><div class="icon">📭</div><p>등록된 업무가 없습니다.<br><button class="btn btn-primary btn-sm" style="margin-top:8px;" onclick="$('new-name').focus()">+ 첫 업무 등록하기</button></p></div></td></tr>`;
+    rows = `<tr><td colspan="11"><div class="empty-state"><div class="icon">📭</div><p>등록된 업무가 없습니다.<br><button class="btn btn-primary btn-sm" style="margin-top:8px;" onclick="$('new-name').focus()">+ 첫 업무 등록하기</button></p></div></td></tr>`;
   } else {
     // [Phase8] 윈도잉: 많은 행은 일부만 먼저 렌더 (성능)
     const _cap = window._myRowLimit || ROW_CAP;
@@ -2704,11 +2834,12 @@ window.renderMy = function(cont) {
       const od=isOverdue(t), ds=isDueSoon(t);
       const rowCls=od?'overdue':ds?'due-soon':t.status==='진행중'?'in-progress':'';
       return `<tr class="${rowCls}">
+        <td data-label="선택" style="text-align:center;"><input type="checkbox" class="bulk-cb" data-id="${t.id}" ${window._bulkSel&&window._bulkSel.has(t.id)?'checked':''} onclick="toggleSel('${t.id}',this.checked)"></td>
         <td data-label="등록일" style="white-space:nowrap;">${fmt(t.date)}</td>
         <td data-label="분야">${catBadge(t.category)}</td>
         <td data-label="구분">${typeBadge(t.taskType)}</td>
-        <td data-label="업무명" style="max-width:260px;"><div class="task-name-cell" title="${escHtml(t.name)}">${escHtml(t.name)}</div>${t.desc?`<div style="color:var(--text-muted);font-size:12px;margin-top:2px;" title="${escHtml(t.desc)}">${escHtml(t.desc)}</div>`:''}</td>
-        <td data-label="진행률" style="min-width:80px;">${progBar(t.progress)}</td>
+        <td data-label="업무명" style="max-width:260px;"><div class="task-name-cell" title="${escHtml(t.name)}">${escHtml(t.name)}</div>${t.desc?`<div style="color:var(--text-muted);font-size:12px;margin-top:2px;" title="${escHtml(t.desc)}">${escHtml(t.desc)}</div>`:''}${carryoverBadge(t)}</td>
+        <td data-label="진행률" style="min-width:80px;">${progInline(t)}</td>
         <td data-label="완료예정" style="white-space:nowrap;">${fmt(t.due)}${od?'<br><span style="color:var(--accent);font-size:11px;">기한초과</span>':''}</td>
         <td data-label="우선순위">${prioBadge(t.priority)}</td>
         <td data-label="상태">${statusBadge(t.status)}</td>
@@ -2721,12 +2852,12 @@ window.renderMy = function(cont) {
           <button class="btn btn-danger btn-sm" style="margin-top:4px;" onclick="del('${t.id}')">삭제</button>
         </td>
       </tr>
-      <tr class="acrow" id="acrow-${t.id}" style="display:none;"><td colspan="10" style="background:#F7FAFF;padding:10px 16px;">
+      <tr class="acrow" id="acrow-${t.id}" style="display:none;"><td colspan="11" style="background:#F7FAFF;padding:10px 16px;">
         <div id="acthread-${t.id}">${commentThreadHTML(t)}</div>
         <div style="margin-top:8px;"><button class="btn btn-outline btn-sm" onclick="addComment('${t.id}')">💬 댓글 달기</button></div>
       </td></tr>`;
     }).join('');
-    if (_rest > 0) rows += `<tr><td colspan="10" style="text-align:center;padding:12px;"><button class="btn btn-outline btn-sm" onclick="window._myRowLimit=(window._myRowLimit||window.ROW_CAP)+window.ROW_CAP;renderMy($('content'))">+ ${nf(_rest)}건 더 보기</button></td></tr>`;
+    if (_rest > 0) rows += `<tr><td colspan="11" style="text-align:center;padding:12px;"><button class="btn btn-outline btn-sm" onclick="window._myRowLimit=(window._myRowLimit||window.ROW_CAP)+window.ROW_CAP;renderMy($('content'))">+ ${nf(_rest)}건 더 보기</button></td></tr>`;
   }
 
   cont.innerHTML = `
@@ -2786,9 +2917,17 @@ window.renderMy = function(cont) {
         ${window._showCompleted ? `<button class="btn btn-ghost btn-sm" onclick="window._showCompleted=false;renderMy($('content'))">완료 업무 접기 ▲</button>` : ''}
         <span style="color:var(--text-muted);font-size:13px;">${filtered.length}건${myCompletedHidden&&myCompletedCount>0?` <span style="opacity:.7;">(완료 ${myCompletedCount}건 숨김)</span>`:''}</span>
       </div>
+      <div id="bulk-bar" class="bulk-bar hidden">
+        <span><b id="bulk-count">0</b>건 선택됨</span>
+        <button class="btn btn-sm btn-primary" onclick="bulkComplete()">✅ 완료 처리</button>
+        <button class="btn btn-sm btn-outline" onclick="bulkCarry()">➡️ 익월 이월</button>
+        <button class="btn btn-sm btn-danger" onclick="bulkDelete()">🗑 삭제</button>
+        <button class="btn btn-sm btn-ghost" onclick="clearSel()">선택 해제</button>
+      </div>
       <div class="table-wrap">
-        <table class="task-table">
+        <table class="task-table has-bulk">
           <thead><tr>
+            <th style="width:32px;text-align:center;"><input type="checkbox" onclick="toggleSelAll(this.checked)" title="현재 보이는 업무 전체 선택"></th>
             <th>등록일</th><th>분야</th><th>구분</th><th>업무명 / 진행내용</th>
             <th>진행률</th><th>완료예정일</th><th>우선순위</th><th>처리여부</th><th>비고</th><th>관리</th>
           </tr></thead>
@@ -2801,6 +2940,7 @@ window.renderMy = function(cont) {
         <span style="background:#F0FFF4;padding:2px 6px;border-radius:3px;margin-left:4px;">진행중</span>
       </div>
     </div>`;
+  updateBulkBar();  // [개선 N-6] 재렌더 후 선택 상태 반영
 };
 
 // [4][6][7][9] renderAll 업그레이드 — 권한 분리 + 정렬 + 날짜 필터 + 백업
@@ -2888,7 +3028,7 @@ window.renderAll = function(cont) {
     return `<tr class="${rowCls}">
       <td><strong>${escHtml(t.member)}</strong></td>
       <td style="white-space:nowrap;">${fmt(t.date)}</td>
-      <td style="max-width:260px;"><div class="task-name-cell" title="${escHtml(t.name)}">${escHtml(t.name)}</div>${t.desc?`<div style="color:var(--text-muted);font-size:12px;margin-top:2px;" title="${escHtml(t.desc)}">${escHtml(t.desc)}</div>`:''}</td>
+      <td style="max-width:260px;"><div class="task-name-cell" title="${escHtml(t.name)}">${escHtml(t.name)}</div>${t.desc?`<div style="color:var(--text-muted);font-size:12px;margin-top:2px;" title="${escHtml(t.desc)}">${escHtml(t.desc)}</div>`:''}${carryoverBadge(t)}</td>
       <td>${catBadge(t.category)}</td>
       <td>${typeBadge(t.taskType)}</td>
       <td>${prioBadge(t.priority)}</td>
@@ -3003,10 +3143,61 @@ window.saveEdit = async function() {
 // (구) Phase2 addTask 제거됨 — 최종 정의는 PHASE 3 ADDITIONS [Phase6 정리]
 
 // ── 트렌드 계산 헬퍼 (항목 13) ──
+// 월 집계 범위: 해당 월에 등록된 업무 + (현재 월일 때만) 이월된 미완료 업무
+// → 월이 바뀌어도 지난달 미완료 업무가 이번달 KPI·완료율에서 누락되지 않도록 함 [버그#2]
+// 전월/과거 월 집계(추세 비교)에는 이월을 적용하지 않아 과거 스냅샷이 안정적으로 유지됨
+function tasksInMonth(list, month) {
+  const isCurrent = month === getCurrentMonth();
+  return list.filter(t => {
+    const d = (t.date||'').slice(0,7);
+    if (d === month) return true;
+    // 이월 미완료는 현재 월에만 포함. 단 익월 계획(미래 계획)은 실제 작업이 아니므로 제외 [개선#2]
+    if (isCurrent && d && d < month && t.status !== '처리완료' && t.taskType !== '익월' && !t.isArchived) return true;
+    return false;
+  });
+}
 function calcMonthRate(memberList, month) {
-  const t = tasks.filter(x => memberList.includes(x.member) && (x.date||'').startsWith(month));
+  const pool = tasks.filter(x => memberList.includes(x.member));
+  const t = tasksInMonth(pool, month);
   if (!t.length) return null;
   return Math.round(t.filter(x => x.status === '처리완료').length / t.length * 100);
+}
+// 완료 시점 추정: 변경이력에서 '처리완료' 전환 시각, 없으면 null(시점 불명) [개선 C-2]
+function completedAt(t) {
+  if (t.status !== '처리완료') return null;
+  let ts = null;
+  if (Array.isArray(t.history)) t.history.forEach(h => {
+    if ((h.change||'').includes('처리완료')) { const v = Date.parse(h.at||''); if (!isNaN(v)) ts = Math.max(ts||0, v); }
+  });
+  return ts;
+}
+// 마감 준수 통계: 마감일(due)이 해당 월인 업무 기준 — 완료율 게이밍 보완 지표
+// 준수율 = 정시완료 ÷ (정시완료 + 지연완료 + 연체미완료). 마감일 미도래 진행건은 분모에서 제외
+function dueComplianceStats(list, month) {
+  const pool = list.filter(t => !t.isArchived && t.due && (t.due||'').slice(0,7) === month);
+  let onTime = 0, late = 0, missed = 0;
+  pool.forEach(t => {
+    if (t.status === '처리완료') {
+      const ca = completedAt(t);
+      const dueEnd = Date.parse(t.due + 'T23:59:59');
+      if (ca == null || ca <= dueEnd) onTime++;   // 시점 불명은 정시로 간주(데이터 한계)
+      else late++;
+    } else if (t.due < today()) {
+      missed++;                                    // 마감 지났는데 미완료
+    }
+  });
+  const denom = onTime + late + missed;
+  return { denom, onTime, late, missed, rate: denom ? Math.round(onTime/denom*100) : null };
+}
+// 팀원의 마지막 활동 시각(등록·수정 이력 최신값) — 미보고 판정 공용 [개선 A-1·D-1]
+function memberLastActivity(m, list) {
+  let last = 0;
+  list.filter(t => t.member === m).forEach(t => {
+    if (t.createdAt) last = Math.max(last, t.createdAt);
+    const dts = Date.parse((t.date||'') + 'T00:00:00'); if (!isNaN(dts)) last = Math.max(last, dts);
+    if (Array.isArray(t.history)) t.history.forEach(h => { const ts = Date.parse(h.at||''); if (!isNaN(ts)) last = Math.max(last, ts); });
+  });
+  return last;
 }
 function trendBadge(cur, prev) {
   if (prev === null || cur === null) return '';
@@ -3024,7 +3215,7 @@ function genInterpretation(members, month, curRate, prevRate) {
     const d = new Date(y, m-2, 1);
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
   })();
-  const allMonth = tasks.filter(t => members.includes(t.member) && (t.date||'').startsWith(month));
+  const allMonth = tasksInMonth(tasks.filter(t => members.includes(t.member)), month);
   const overdueN = allMonth.filter(isOverdue).length;
   const jungjeomN = allMonth.filter(t => t.taskType==='중점').length;
   const jungjeomDone = allMonth.filter(t => t.taskType==='중점' && t.status==='처리완료').length;
@@ -3069,7 +3260,7 @@ window.renderDashboard = function(cont) {
 
   // 팀원별 요약
   const memberRows = members.map(m => {
-    const mt = allTasks.filter(t => t.member===m && (t.date||'').startsWith(curMonth));
+    const mt = tasksInMonth(allTasks.filter(t => t.member===m), curMonth);
     const done = mt.filter(t=>t.status==='처리완료').length;
     const rate = mt.length ? Math.round(done/mt.length*100) : 0;
     const od = mt.filter(isOverdue).length;
@@ -3113,19 +3304,44 @@ window.renderDashboard = function(cont) {
   const interps = genInterpretation(members, curMonth, curRate, prevRate);
   const interpHTML = interps.map(s=>`<div style="margin-bottom:6px;">• ${s}</div>`).join('');
 
+  // 이번 달 보고(등록·갱신) 활동이 없는 팀원 가시화 [개선 A-1]
+  const monthStart = Date.parse(curMonth + '-01T00:00:00');
+  const sla = dueComplianceStats(allTasks, curMonth);
+  const slaPrev = dueComplianceStats(allTasks, prevMonth);
+  const noReport = members.map(m => ({ m, last: memberLastActivity(m, allTasks) })).filter(x => x.last < monthStart);
+
+  // 데이터 품질: 진행중 업무 기준 마감일/분야 입력 상태 [개선 N-1]
+  const activeQ = tasksInMonth(allTasks, curMonth).filter(t => t.status !== '처리완료');
+  const qTotal = activeQ.length;
+  const dueRate = qTotal ? Math.round(activeQ.filter(t => t.due).length / qTotal * 100) : null;
+  const etcRate = qTotal ? Math.round(activeQ.filter(t => (t.category||'기타') === '기타').length / qTotal * 100) : null;
+  const noDueN = activeQ.filter(t => !t.due).length;
+  const noReportHTML = noReport.map(x => {
+    const label = x.last ? `마지막 활동 ${Math.floor((Date.now()-x.last)/86400000)}일 전` : '활동 기록 없음';
+    return `<span class="nr-chip">⚠️ ${escHtml(x.m)}<span class="nr-sub">${label}</span></span>`;
+  }).join('');
+
   cont.innerHTML = `
     <div class="exec-summary">
+      <button class="btn btn-primary btn-sm" style="float:right;" onclick="renderOnePager()" title="대표 보고용 1페이지 요약 (인쇄/PDF)">🖨️ 1페이지 요약</button>
       <h2>📊 ${curMonth.replace('-','년 ')}월 팀 현황 대시보드</h2>
       <div class="sub">경영기획팀 · 팀장</div>
       <div class="exec-kpi">
-        <div class="exec-kpi-item"><div class="kv">${allTasks.filter(t=>(t.date||'').startsWith(curMonth)).length}</div><div class="kl">이번달 전체</div></div>
+        <div class="exec-kpi-item"><div class="kv">${tasksInMonth(allTasks, curMonth).length}</div><div class="kl">이번달 전체<span style="font-size:10px;color:var(--text-muted);"> (이월 포함)</span></div></div>
         <div class="exec-kpi-item"><div class="kv">${curRate !== null ? curRate+'%' : '-'}</div><div class="kl">완료율 ${trendBadge(curRate,prevRate)}</div></div>
         <div class="exec-kpi-item"><div class="kv" style="color:#FC8181;">${overdueTasks.length}</div><div class="kl">기한초과</div></div>
         <div class="exec-kpi-item"><div class="kv" style="color:#F6AD55;">${dueSoon.length}</div><div class="kl">7일내마감</div></div>
-        <div class="exec-kpi-item"><div class="kv" style="color:#68D391;">${allTasks.filter(t=>t.status==='처리완료'&&(t.date||'').startsWith(curMonth)).length}</div><div class="kl">이번달완료</div></div>
+        <div class="exec-kpi-item"><div class="kv" style="color:#68D391;">${tasksInMonth(allTasks, curMonth).filter(t=>t.status==='처리완료').length}</div><div class="kl">이번달완료</div></div>
+        <div class="exec-kpi-item"><div class="kv" style="color:#4299E1;">${sla.rate!==null?sla.rate+'%':'-'}</div><div class="kl">마감준수율 ${trendBadge(sla.rate,slaPrev.rate)}</div></div>
       </div>
       ${interpHTML ? `<div class="exec-interp">${interpHTML}</div>` : ''}
     </div>
+
+    ${noReport.length ? `<div class="nr-banner">
+      <h3>📋 이번 달 미보고 팀원 <span class="nr-count">${noReport.length}</span></h3>
+      <div class="nr-list">${noReportHTML}</div>
+      <div class="nr-hint">이번 달 업무 등록·갱신 활동이 없는 팀원입니다. 업무 입력을 독려해 주세요.</div>
+    </div>` : ''}
 
     <div class="action-grid">
       <div class="action-card red">
@@ -3145,7 +3361,140 @@ window.renderDashboard = function(cont) {
     <div class="card">
       <div class="section-header-row"><h2>팀원별 이번달 현황</h2></div>
       ${memberRows || '<div class="empty-state"><div class="icon">👥</div><p>팀원 정보 없음</p></div>'}
+    </div>
+
+    <div class="card">
+      <div class="section-header-row"><h2>⏱️ 마감 준수 현황 <span style="font-size:12px;color:var(--text-muted);font-weight:400;">(이번 달 마감 기준)</span></h2></div>
+      ${sla.denom ? `<div class="sla-row">
+        <div class="sla-stat ok"><b>${sla.onTime}</b><span>정시 완료</span></div>
+        <div class="sla-stat late"><b>${sla.late}</b><span>지연 완료</span></div>
+        <div class="sla-stat miss"><b>${sla.missed}</b><span>미완료(연체)</span></div>
+        <div class="sla-stat rate"><b>${sla.rate}%</b><span>준수율 ${trendBadge(sla.rate,slaPrev.rate)}</span></div>
+      </div>
+      <div class="nr-hint">준수율 = 정시 완료 ÷ (정시 + 지연 + 연체). 아직 마감일이 도래하지 않은 진행 업무는 제외됩니다.</div>`
+      : '<div style="color:var(--text-muted);font-size:13px;padding:4px;">이번 달 마감 예정(완료예정일 지정) 업무가 없습니다.</div>'}
+    </div>
+
+    <div class="card">
+      <div class="section-header-row"><h2>🧹 데이터 품질 <span style="font-size:12px;color:var(--text-muted);font-weight:400;">(진행중 ${qTotal}건 기준)</span></h2></div>
+      ${qTotal ? `<div class="sla-row">
+        <div class="sla-stat ${dueRate>=80?'ok':dueRate>=50?'late':'miss'}"><b>${dueRate}%</b><span>마감일 입력률</span></div>
+        <div class="sla-stat ${etcRate<=20?'ok':'late'}"><b>${etcRate}%</b><span>'기타' 분야 비율</span></div>
+        <div class="sla-stat ${noDueN===0?'ok':'miss'}"><b>${noDueN}</b><span>마감일 미입력</span></div>
+      </div>
+      <div class="nr-hint">마감일이 빈 업무 ${noDueN}건은 <b>마감 준수율(SLA) 집계에서 제외</b>됩니다. 마감일을 채울수록 지표 신뢰도가 올라갑니다.</div>`
+      : '<div style="color:var(--text-muted);font-size:13px;padding:4px;">진행중 업무가 없습니다.</div>'}
     </div>`;
+};
+
+// ── 1페이지 임원 요약 (대표 보고용 · 인쇄/PDF) [개선 D-1] ──
+window.renderOnePager = function() {
+  const members = cfg.members || [];
+  const curMonth = getCurrentMonth();
+  const allTasks = tasks.filter(t => !t.isArchived);
+  const monthTasks = tasksInMonth(allTasks, curMonth);
+  const curRate = calcMonthRate(members, curMonth);
+  const prevMonth = (() => { const [y,m]=curMonth.split('-').map(Number); const d=new Date(y,m-2,1); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; })();
+  const prevRate = calcMonthRate(members, prevMonth);
+  const sla = dueComplianceStats(allTasks, curMonth);
+  const overdue = allTasks.filter(isOverdue).sort((a,b)=> (a.due||'').localeCompare(b.due||''));
+  const jung = monthTasks.filter(t => t.taskType === '중점');
+  const jungDone = jung.filter(t => t.status === '처리완료').length;
+  const jungRate = jung.length ? Math.round(jungDone/jung.length*100) : null;
+  const monthStart = Date.parse(curMonth + '-01T00:00:00');
+  const noReport = members.filter(m => memberLastActivity(m, allTasks) < monthStart);
+
+  // 신호등 판정
+  let light = 'green', lightLabel = '정상';
+  if (overdue.length > 0 || (curRate !== null && curRate < 60)) { light = 'red'; lightLabel = '주의'; }
+  else if ((curRate !== null && curRate < 80) || sla.missed > 0 || noReport.length > 0) { light = 'yellow'; lightLabel = '관찰'; }
+  const lightColor = { green:'#38A169', yellow:'#D69E2E', red:'#E53E3E' }[light];
+
+  // 한 줄 내러티브
+  const diff = (curRate !== null && prevRate !== null) ? curRate - prevRate : null;
+  const trendTxt = diff === null ? '' : diff > 0 ? `(전월 대비 ▲${diff}%p)` : diff < 0 ? `(전월 대비 ▼${Math.abs(diff)}%p)` : '(전월과 동일)';
+  const narrative = `이번 달 완료율 <b>${curRate!==null?curRate+'%':'-'}</b> ${trendTxt}, 마감 준수율 <b>${sla.rate!==null?sla.rate+'%':'-'}</b>, 기한초과 <b>${overdue.length}건</b>, 미보고 팀원 <b>${noReport.length}명</b>.`;
+
+  const esc = (s) => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const riskRows = overdue.slice(0,5).map(t => {
+    const d = Math.floor((new Date()-new Date(t.due))/86400000);
+    return `<tr><td class="r-mem">${esc(t.member)}</td><td>${esc(t.name)}</td><td class="r-cat">${esc(t.category||'-')}</td><td class="r-od">D+${d}</td></tr>`;
+  }).join('') || `<tr><td colspan="4" class="r-none">기한 초과 업무 없음 ✅</td></tr>`;
+
+  const memberRows = members.map(m => {
+    const mt = tasksInMonth(allTasks.filter(t => t.member===m), curMonth);
+    const done = mt.filter(t=>t.status==='처리완료').length;
+    const rate = mt.length ? Math.round(done/mt.length*100) : 0;
+    const flag = noReport.includes(m);
+    return `<tr${flag?' class="r-flag"':''}><td class="r-mem">${esc(m)}${flag?' ⚠️':''}</td><td>${mt.length}건</td><td>${done}건</td><td><b>${rate}%</b></td></tr>`;
+  }).join('');
+
+  // [개선 N-5] 새 창(팝업) 대신 앱 내 오버레이로 표시 — 팝업 차단·모바일 환경에서도 동작
+  const style = `<style>
+    #onepager-overlay{position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.45);overflow:auto;padding:24px;font-family:'Malgun Gothic','맑은 고딕',sans-serif;}
+    #onepager-overlay .op-toolbar{max-width:900px;margin:0 auto 12px;display:flex;justify-content:flex-end;gap:8px;}
+    #onepager-overlay .op-toolbar button{border:none;border-radius:8px;padding:9px 16px;font-size:13px;cursor:pointer;}
+    #onepager-overlay .op-print{background:#2C5282;color:#fff;} #onepager-overlay .op-close{background:#E2E8F0;color:#2D3748;}
+    #onepager-overlay .op-sheet{max-width:900px;margin:0 auto;background:#fff;border-radius:10px;padding:28px 32px;color:#2D3748;font-size:13px;line-height:1.5;}
+    #onepager-overlay .op-head{display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid ${lightColor};padding-bottom:12px;margin-bottom:16px;}
+    #onepager-overlay .op-title h1{font-size:21px;color:#1A202C;} #onepager-overlay .op-title .sub{color:#718096;font-size:13px;margin-top:2px;}
+    #onepager-overlay .op-light{display:flex;align-items:center;gap:10px;background:${lightColor}1A;border:1px solid ${lightColor};border-radius:10px;padding:8px 16px;}
+    #onepager-overlay .op-light .dot{width:18px;height:18px;border-radius:50%;background:${lightColor};}
+    #onepager-overlay .op-light .lbl{font-size:18px;font-weight:800;color:${lightColor};}
+    #onepager-overlay .op-narr{background:#F7FAFC;border-left:4px solid ${lightColor};padding:10px 14px;border-radius:6px;margin-bottom:16px;font-size:14px;}
+    #onepager-overlay .op-kpi{display:flex;gap:10px;margin-bottom:18px;}
+    #onepager-overlay .op-kpi .k{flex:1;text-align:center;border:1px solid #E2E8F0;border-radius:10px;padding:12px 6px;}
+    #onepager-overlay .op-kpi .k .v{font-size:26px;font-weight:800;line-height:1.1;} #onepager-overlay .op-kpi .k .l{font-size:11px;color:#718096;margin-top:3px;}
+    #onepager-overlay .op-cols{display:flex;gap:18px;} #onepager-overlay .op-col{flex:1;}
+    #onepager-overlay h2{font-size:14px;color:#2C5282;border-bottom:1px solid #E2E8F0;padding-bottom:5px;margin-bottom:8px;}
+    #onepager-overlay table{width:100%;border-collapse:collapse;} #onepager-overlay td,#onepager-overlay th{padding:5px 7px;border-bottom:1px solid #EDF2F7;text-align:left;font-size:12px;}
+    #onepager-overlay .r-mem{font-weight:700;white-space:nowrap;} #onepager-overlay .r-cat{color:#718096;} #onepager-overlay .r-od{color:#E53E3E;font-weight:700;text-align:right;white-space:nowrap;}
+    #onepager-overlay .r-none{color:#718096;text-align:center;padding:10px;} #onepager-overlay .r-flag{background:#FFF5F5;}
+    #onepager-overlay .op-foot{margin-top:22px;padding-top:10px;border-top:1px solid #E2E8F0;color:#A0AEC0;font-size:11px;display:flex;justify-content:space-between;}
+  </style>`;
+
+  const prev = document.getElementById('onepager-overlay'); if (prev) prev.remove();
+  const ov = document.createElement('div');
+  ov.id = 'onepager-overlay';
+  ov.innerHTML = style + `
+    <div class="op-toolbar">
+      <button class="op-print" onclick="printOnePager()">🖨️ 인쇄 / PDF 저장</button>
+      <button class="op-close" onclick="document.getElementById('onepager-overlay').remove()">✕ 닫기</button>
+    </div>
+    <div class="op-sheet">
+      <div class="op-head">
+        <div class="op-title"><h1>${esc(cfg.orgName||'팀')} · ${curMonth.replace('-','년 ')}월 업무 요약</h1><div class="sub">대표이사 보고용 · 작성 ${today().replace(/-/g,'.')}</div></div>
+        <div class="op-light"><span class="dot"></span><span class="lbl">${lightLabel}</span></div>
+      </div>
+      <div class="op-narr">${narrative}</div>
+      <div class="op-kpi">
+        <div class="k"><div class="v">${monthTasks.length}</div><div class="l">이번달 업무(이월 포함)</div></div>
+        <div class="k"><div class="v" style="color:#38A169;">${curRate!==null?curRate+'%':'-'}</div><div class="l">완료율</div></div>
+        <div class="k"><div class="v" style="color:#4299E1;">${sla.rate!==null?sla.rate+'%':'-'}</div><div class="l">마감 준수율</div></div>
+        <div class="k"><div class="v" style="color:#E53E3E;">${overdue.length}</div><div class="l">기한초과</div></div>
+        <div class="k"><div class="v" style="color:#D69E2E;">${jungRate!==null?jungRate+'%':'-'}</div><div class="l">중점과제 진척</div></div>
+      </div>
+      <div class="op-cols">
+        <div class="op-col">
+          <h2>🚨 Top 리스크 (기한초과)</h2>
+          <table><tbody>${riskRows}</tbody></table>
+        </div>
+        <div class="op-col">
+          <h2>👥 팀원별 현황 ${noReport.length?`<span style="color:#E53E3E;font-size:12px;">· 미보고 ${noReport.length}명</span>`:''}</h2>
+          <table><thead><tr><th>팀원</th><th>업무</th><th>완료</th><th>완료율</th></tr></thead><tbody>${memberRows||'<tr><td colspan="4" class="r-none">팀원 없음</td></tr>'}</tbody></table>
+        </div>
+      </div>
+      <div class="op-foot"><span>중점과제 ${jungDone}/${jung.length}건 완료</span><span>${esc(cfg.orgName||'')} 자동 생성</span></div>
+    </div>`;
+  document.body.appendChild(ov);
+};
+// 1페이지 요약만 인쇄 (앱 본문은 인쇄에서 숨김) [개선 N-5]
+window.printOnePager = function() {
+  document.body.classList.add('op-print-mode');
+  const cleanup = () => { document.body.classList.remove('op-print-mode'); window.removeEventListener('afterprint', cleanup); };
+  window.addEventListener('afterprint', cleanup);
+  window.print();
+  setTimeout(cleanup, 1000);  // afterprint 미지원 브라우저 폴백
 };
 
 // ── 월간보고 전면 개선: Executive Summary + 커버 + 트렌드 + 해석 + 익월경고 (항목 11~13, 16~18) ──
@@ -4000,6 +4349,90 @@ function generateRecurringTasks() {
   if (created > 0) { saveLocal(); showToast(`반복 업무 ${created}건이 자동 생성되었습니다.`, 'info'); }
 }
 
+// 익월 계획(taskType='익월')을 다음 달이 되면 실제 업무로 자동 전환 [개선#2]
+// → 계획-실행 단절·이중 입력 제거. 원본 계획은 ikmolConverted로 표시해 중복 전환 방지
+async function generateIkmolTasks() {
+  const curMonth = getCurrentMonth();
+  const sources = tasks.filter(t =>
+    t.taskType === '익월' &&
+    t.member === session.name &&
+    !t.isArchived &&
+    !t.ikmolConverted &&
+    (t.name||'').trim() &&
+    (t.date||'').slice(0,7) < curMonth   // 등록 월이 지난 익월 계획만
+  );
+  let created = 0;
+  for (const t of sources) {
+    const alreadyChild = tasks.some(x => x.ikmolParent === t.id);
+    if (!alreadyChild) {
+      // 계획이 의도한 월(등록월+1)의 1일로 배치 — 밀려 로그인해도 제 달에 안착 [개선 N-2]
+      const intended = getNextMonth((t.date||'').slice(0,7)) + '-01';
+      const child = {
+        id: uid(), member: session.name, date: intended, name: t.name,
+        category: t.category, desc: t.desc, taskType: '일상',
+        progress: 0, priority: t.priority||'D', urgency: t.urgency, importance: t.importance,
+        due: '', status: '진행중', note: t.note||'', monthComment: '',
+        ikmolParent: t.id, createdAt: Date.now()
+      };
+      tasks.push(child);
+      created++;
+      if (cfg.storage === 'firebase' && _fbRefs) {
+        try { await _fbRefs.setDoc(_fbRefs.doc(_fbRefs.colRef, child.id), child); } catch(e) {}
+      }
+    }
+    const src = tasks.find(x => x.id === t.id);
+    if (src) {
+      src.ikmolConverted = true;
+      if (cfg.storage === 'firebase' && _fbRefs) {
+        try { await _fbRefs.setDoc(_fbRefs.doc(_fbRefs.colRef, src.id), src); } catch(e) {}
+      }
+    }
+  }
+  if (created > 0) {
+    saveLocal();
+    renderCurrentTab();
+    showToast(`익월 계획 ${created}건이 이번 달 업무로 전환되었습니다.`, 'success');
+  }
+}
+
+// 로그인 시 하루 1회, 본인 기준 요약 알림 (기한초과·임박·미보고) [개선 N-3]
+function showDailyDigest() {
+  if (typeof READONLY !== 'undefined' && READONLY) return;
+  if (!session.name) return;
+  const key = 'wrs_digest_' + session.role + '_' + session.name;
+  const todayStr = today();
+  if (localStorage.getItem(key) === todayStr) return;  // 오늘 이미 표시함
+
+  const items = [];
+  let urgent = false;
+  if (session.role === 'member') {
+    const mine = tasks.filter(t => !t.isArchived && t.member === session.name);
+    const od = mine.filter(isOverdue);
+    const soon = mine.filter(t => { if (!t.due || t.status==='처리완료') return false; const d=(new Date(t.due)-new Date(todayStr))/86400000; return d>=0 && d<=3; });
+    const curMonth = getCurrentMonth();
+    const reported = memberLastActivity(session.name, tasks) >= Date.parse(curMonth + '-01T00:00:00');
+    if (od.length) { items.push(`🔴 기한초과 ${od.length}건`); urgent = true; }
+    if (soon.length) items.push(`🟠 3일 내 마감 ${soon.length}건`);
+    if (!reported) items.push(`📋 이번 달 등록한 업무가 없습니다`);
+  } else if (session.role === 'leader') {
+    const active = tasks.filter(t => !t.isArchived);
+    const od = active.filter(isOverdue);
+    const monthStart = Date.parse(getCurrentMonth() + '-01T00:00:00');
+    const noRep = (cfg.members||[]).filter(m => memberLastActivity(m, active) < monthStart);
+    if (od.length) { items.push(`🔴 팀 기한초과 ${od.length}건`); urgent = true; }
+    if (noRep.length) items.push(`📋 미보고 팀원 ${noRep.length}명`);
+  }
+  if (!items.length) { localStorage.setItem(key, todayStr); return; }
+  localStorage.setItem(key, todayStr);
+
+  const bar = document.createElement('div');
+  bar.className = 'digest-bar' + (urgent ? ' urgent' : '');
+  bar.innerHTML = `<span>🔔 <b>오늘의 요약</b> — ${items.join(' &nbsp;·&nbsp; ')}</span><button title="닫기" onclick="this.parentElement.remove()">✕</button>`;
+  document.body.appendChild(bar);
+  setTimeout(() => bar.classList.add('show'), 30);
+  setTimeout(() => { if (bar.parentElement) { bar.classList.remove('show'); setTimeout(()=>bar.remove(), 300); } }, 15000);
+}
+
 // ── [35] 온보딩 투어 ──
 const TOUR_STEPS = [
   { ic:'📝', t:'1. 업무를 등록하세요', d:'"업무 등록"에서 업무명·분야·상태만 넣어도 됩니다. (상세 입력에서 긴급도·중요도를 고르면 우선순위가 자동 계산됩니다.)' },
@@ -4109,7 +4542,7 @@ window.renderExec = function(cont) {
   // 통합 집계
   let grandTotal=0, grandDone=0, grandOverdue=0;
   const teamCards = execTeams.map(tm => {
-    const mt = tm.tasks.filter(t => (t.date||'').startsWith(curMonth));
+    const mt = tasksInMonth(tm.tasks, curMonth);
     const total = mt.length;
     const done = mt.filter(t=>t.status==='처리완료').length;
     const overdue = mt.filter(t => t.due && t.status!=='처리완료' && t.due < today()).length;
@@ -4186,8 +4619,9 @@ const _p3AfterLogin = window.afterLogin;
 window.afterLogin = async function() {
   applyBranding();
   await _p3AfterLogin();
-  if (session.role === 'member') generateRecurringTasks();
+  if (session.role === 'member') { generateRecurringTasks(); await generateIkmolTasks(); }
   checkBrowserCompat();
+  setTimeout(showDailyDigest, 900);  // [개선 N-3] 하루 1회 요약 알림
   // 사용자 역할 표시 보정
   const labelMap = { leader:'팀장', exec:'관리자', viewer:'업무 현황 조회', member:'팀원' };
   // 팀장·관리자는 개인 이름 없이 역할만 표시, 팀원은 이름+역할
@@ -4469,7 +4903,7 @@ window.renderExec = function(cont) {
   }
   let grandTotal=0, grandDone=0, grandOverdue=0;
   const teamCards = execTeams.map((tm, idx) => {
-    const mt = tm.tasks.filter(t => (t.date||'').startsWith(curMonth));
+    const mt = tasksInMonth(tm.tasks, curMonth);
     const total = mt.length;
     const done = mt.filter(t=>t.status==='처리완료').length;
     const overdue = mt.filter(t => t.due && t.status!=='처리완료' && t.due < today()).length;
@@ -4514,7 +4948,7 @@ window.execDrilldown = function(idx) {
   const area = $('exec-drilldown');
   if (!area) return;
   const curMonth = getCurrentMonth();
-  const mt = tm.tasks.filter(t => (t.date||'').startsWith(curMonth));
+  const mt = tasksInMonth(tm.tasks, curMonth);
   const rows = mt.length ? mt.map(t => {
     const od = t.due && t.status!=='처리완료' && t.due < today();
     return `<tr class="${od?'overdue':''}">
