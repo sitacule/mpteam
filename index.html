@@ -178,6 +178,13 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:var
 .sla-stat b{display:block;font-size:24px;font-weight:700;line-height:1.1;}
 .sla-stat span{font-size:12px;color:var(--text-muted);}
 .sla-stat.ok b{color:#38A169;} .sla-stat.late b{color:#D69E2E;} .sla-stat.miss b{color:#E53E3E;} .sla-stat.rate b{color:#4299E1;}
+/* 대시보드 상세 분석 접기 [개선 M-1] */
+.analysis-fold{margin-bottom:16px;}
+.analysis-fold > summary{cursor:pointer;list-style:none;background:#F7FAFC;border:1px solid var(--border,#E2E8F0);border-radius:10px;padding:11px 16px;font-weight:700;font-size:14px;color:#2C5282;user-select:none;}
+.analysis-fold > summary::-webkit-details-marker{display:none;}
+.analysis-fold > summary::before{content:'▸ ';}
+.analysis-fold[open] > summary::before{content:'▾ ';}
+.analysis-fold[open] > summary{margin-bottom:12px;}
 /* 팀원 부하 균형 막대 [개선 A-3] */
 .load-row{display:flex;align-items:center;gap:10px;padding:5px 0;}
 .load-name{min-width:64px;font-weight:600;font-size:13px;}
@@ -1435,6 +1442,7 @@ window.initFirebase = async function() {
     onSnapshot(colRef,
       snap => {
         tasks = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+        normalizeTasksInPlace();   // [개선 M-2] 자동 보정
         tasks.sort((a,b) => (a.createdAt||0) - (b.createdAt||0));
         console.log('[Firebase] tasks 수신:', tasks.length, '건');
         scheduleRender();
@@ -1875,9 +1883,18 @@ window.afterLogin = async function() {
   showTab(0);
 };
 
+// [개선 M-2] 데이터 로드 시 자동 정규화 — createdAt/isArchived 누락분을 메모리에서 보정
+// (쓰기 없음·idempotent) → SLA·사이클타임·정렬·장기 미진행 등 지표가 항상 올바른 데이터를 보게 함
+function normalizeTasksInPlace() {
+  tasks.forEach(t => {
+    if (t.createdAt == null) { const ts = Date.parse((t.date||'') + 'T00:00:00'); t.createdAt = isNaN(ts) ? Date.now() : ts; }
+    if (t.isArchived === undefined) t.isArchived = false;
+  });
+}
 function loadLocal() {
   const raw = localStorage.getItem('wrs_tasks');
   tasks = raw ? (JSON.parse(raw) || []) : [];
+  normalizeTasksInPlace();
   renderCurrentTab();
 }
 
@@ -3421,6 +3438,8 @@ window.renderDashboard = function(cont) {
       ${memberRows || '<div class="empty-state"><div class="icon">👥</div><p>팀원 정보 없음</p></div>'}
     </div>
 
+    <details class="analysis-fold">
+      <summary>📊 상세 분석 지표 펼치기 <span style="color:var(--text-muted);font-weight:400;font-size:12px;">— 마감 준수 · 데이터 품질 · 구성 · 부하 균형</span></summary>
     <div class="card">
       <div class="section-header-row"><h2>⏱️ 마감 준수 현황 <span style="font-size:12px;color:var(--text-muted);font-weight:400;">(이번 달 마감 기준)</span></h2></div>
       ${sla.denom ? `<div class="sla-row">
@@ -3450,15 +3469,16 @@ window.renderDashboard = function(cont) {
         <div class="sla-stat"><b>${newN}</b><span>신규 등록</span></div>
         <div class="sla-stat ${carryN>0?'late':'ok'}"><b>${carryN}</b><span>이월(지난달)</span></div>
         <div class="sla-stat ok"><b>${doneN}</b><span>순완료</span></div>
-        <div class="sla-stat rate"><b>${avgCycle!==null?avgCycle+'일':'-'}</b><span>평균 처리기간</span></div>
+        <div class="sla-stat rate"><b>${avgCycle!==null?avgCycle+'일':'-'}</b><span>평균 처리기간${cycleVals.length?` (${cycleVals.length}건)`:''}</span></div>
       </div>
-      <div class="nr-hint">이월이 많으면 신규 대비 적체가 쌓이는 신호입니다. 평균 처리기간은 이번 달 완료분의 등록→완료 소요일(측정 가능 건 기준)입니다.</div>
+      <div class="nr-hint">이월이 많으면 신규 대비 적체가 쌓이는 신호입니다. 평균 처리기간은 이번 달 완료분의 등록→완료 소요일이며, ${cycleVals.length<3?'<b>표본이 적어(3건 미만) 참고용</b>입니다.':'측정 가능 건 기준입니다.'}</div>
     </div>
 
     <div class="card">
       <div class="section-header-row"><h2>⚖️ 팀원 부하 균형 <span style="font-size:12px;color:var(--text-muted);font-weight:400;">(진행중 업무 수)</span></h2></div>
       ${loadRows || '<div style="color:var(--text-muted);font-size:13px;padding:4px;">팀원 정보 없음</div>'}
-    </div>`;
+    </div>
+    </details>`;
 };
 
 // ── 1페이지 임원 요약 (대표 보고용 · 인쇄/PDF) [개선 D-1] ──
