@@ -178,6 +178,13 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:var
 .sla-stat b{display:block;font-size:24px;font-weight:700;line-height:1.1;}
 .sla-stat span{font-size:12px;color:var(--text-muted);}
 .sla-stat.ok b{color:#38A169;} .sla-stat.late b{color:#D69E2E;} .sla-stat.miss b{color:#E53E3E;} .sla-stat.rate b{color:#4299E1;}
+/* 팀원 부하 균형 막대 [개선 A-3] */
+.load-row{display:flex;align-items:center;gap:10px;padding:5px 0;}
+.load-name{min-width:64px;font-weight:600;font-size:13px;}
+.load-track{flex:1;background:#EDF2F7;border-radius:8px;height:14px;overflow:hidden;}
+.load-fill{height:14px;background:#4299E1;border-radius:8px;transition:width .3s;}
+.load-fill.heavy{background:#E53E3E;}
+.load-n{min-width:40px;text-align:right;font-size:13px;color:var(--text-muted);}
 /* 다중선택 일괄 작업 바 [개선 N-6] */
 .bulk-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#EBF8FF;border:1px solid #90CDF4;border-radius:8px;padding:8px 12px;margin-bottom:10px;}
 .bulk-bar b{color:#2B6CB0;}
@@ -2052,6 +2059,7 @@ function addFormHTML() {
             <option value="none" selected>반복 없음</option>
             <option value="weekly">매주 반복</option>
             <option value="monthly">매월 반복</option>
+            <option value="quarterly">매분기 반복</option>
           </select>
         </div>
       </div>
@@ -3348,6 +3356,29 @@ window.renderDashboard = function(cont) {
     return `<span class="nr-chip">⚠️ ${escHtml(x.m)}<span class="nr-sub">${label}</span></span>`;
   }).join('');
 
+  // 이번 달 구성: 신규 vs 이월 vs 순완료 [개선 A-2]
+  const monthScope = tasksInMonth(allTasks, curMonth);
+  const newN = allTasks.filter(t => (t.date||'').slice(0,7) === curMonth).length;
+  const carryN = Math.max(0, monthScope.length - newN);
+  const doneN = monthScope.filter(t => t.status === '처리완료').length;
+
+  // 평균 처리기간(사이클타임): 이번 달 완료분의 등록→완료 소요일 [개선 C-3]
+  const cycleVals = allTasks.filter(t => t.status === '처리완료').map(t => {
+    const ca = completedAt(t);
+    if (ca && t.createdAt && ca >= t.createdAt && new Date(ca).toISOString().slice(0,7) === curMonth) return (ca - t.createdAt) / 86400000;
+    return null;
+  }).filter(v => v != null);
+  const avgCycle = cycleVals.length ? Math.round(cycleVals.reduce((a,b)=>a+b,0) / cycleVals.length) : null;
+
+  // 부하 균형: 팀원별 진행중(미완료) 업무 수 [개선 A-3]
+  const loads = members.map(m => ({ m, n: tasksInMonth(allTasks.filter(t => t.member===m), curMonth).filter(t => t.status !== '처리완료').length }));
+  const loadMax = Math.max(1, ...loads.map(l => l.n));
+  const loadRows = loads.sort((a,b)=>b.n-a.n).map(l => {
+    const pct = Math.round(l.n / loadMax * 100);
+    const heavy = l.n === loadMax && loadMax > 0;
+    return `<div class="load-row"><span class="load-name">${escHtml(l.m)}</span><div class="load-track"><div class="load-fill${heavy?' heavy':''}" style="width:${pct}%"></div></div><span class="load-n">${l.n}건</span></div>`;
+  }).join('');
+
   cont.innerHTML = `
     <div class="exec-summary">
       <button class="btn btn-primary btn-sm" style="float:right;" onclick="renderOnePager()" title="대표 보고용 1페이지 요약 (인쇄/PDF)">🖨️ 1페이지 요약</button>
@@ -3411,6 +3442,22 @@ window.renderDashboard = function(cont) {
       </div>
       <div class="nr-hint">마감일이 빈 업무 ${noDueN}건은 <b>마감 준수율(SLA) 집계에서 제외</b>됩니다. 마감일을 채울수록 지표 신뢰도가 올라갑니다.</div>`
       : '<div style="color:var(--text-muted);font-size:13px;padding:4px;">진행중 업무가 없습니다.</div>'}
+    </div>
+
+    <div class="card">
+      <div class="section-header-row"><h2>📦 이번 달 구성 <span style="font-size:12px;color:var(--text-muted);font-weight:400;">(신규·이월·순완료)</span></h2></div>
+      <div class="sla-row">
+        <div class="sla-stat"><b>${newN}</b><span>신규 등록</span></div>
+        <div class="sla-stat ${carryN>0?'late':'ok'}"><b>${carryN}</b><span>이월(지난달)</span></div>
+        <div class="sla-stat ok"><b>${doneN}</b><span>순완료</span></div>
+        <div class="sla-stat rate"><b>${avgCycle!==null?avgCycle+'일':'-'}</b><span>평균 처리기간</span></div>
+      </div>
+      <div class="nr-hint">이월이 많으면 신규 대비 적체가 쌓이는 신호입니다. 평균 처리기간은 이번 달 완료분의 등록→완료 소요일(측정 가능 건 기준)입니다.</div>
+    </div>
+
+    <div class="card">
+      <div class="section-header-row"><h2>⚖️ 팀원 부하 균형 <span style="font-size:12px;color:var(--text-muted);font-weight:400;">(진행중 업무 수)</span></h2></div>
+      ${loadRows || '<div style="color:var(--text-muted);font-size:13px;padding:4px;">팀원 정보 없음</div>'}
     </div>`;
 };
 
@@ -4361,29 +4408,49 @@ window.aiExpandText = async function(taskId) {
   } catch(e) { showToast('AI 호출 실패: ' + e.message, 'error'); }
 };
 
-// ── [34] 반복 업무 자동 생성 ──
-function generateRecurringTasks() {
-  const recs = tasks.filter(t => t.recurrence && t.recurrence !== 'none' && t.member === session.name);
-  const curMonth = getCurrentMonth();
+// ── [34] 반복 업무 자동 생성 (주간·월간·분기) [개선 #3] ──
+// 주기키: 같은 주기 유형 내에서 문자열 비교가 시간 순서와 일치하도록 설계
+function recurPeriodKey(rec, d) {
+  const y = d.getFullYear();
+  if (rec === 'weekly') {
+    const dt = new Date(Date.UTC(y, d.getMonth(), d.getDate()));
+    const day = dt.getUTCDay() || 7; dt.setUTCDate(dt.getUTCDate() + 4 - day);
+    const ys = new Date(Date.UTC(dt.getUTCFullYear(), 0, 1));
+    const wk = Math.ceil((((dt - ys) / 86400000) + 1) / 7);
+    return `${dt.getUTCFullYear()}-W${String(wk).padStart(2,'0')}`;
+  }
+  if (rec === 'quarterly') return `${y}-Q${Math.floor(d.getMonth() / 3) + 1}`;
+  return `${y}-${String(d.getMonth() + 1).padStart(2,'0')}`;  // monthly
+}
+async function generateRecurringTasks() {
+  const recs = tasks.filter(t => t.recurrence && ['weekly','monthly','quarterly'].includes(t.recurrence) && t.member === session.name && !t.isArchived);
+  const now = new Date();
   let created = 0;
-  recs.forEach(t => {
-    const lastGen = t.lastRecurGen || (t.date||'').slice(0,7);
-    if (t.recurrence === 'monthly' && lastGen < curMonth) {
-      const exists = tasks.some(x => x.recurParent === t.id && (x.date||'').startsWith(curMonth));
-      if (!exists) {
-        tasks.push({
-          id: uid(), member: session.name, date: today(), name: t.name,
-          category: t.category, desc: t.desc, taskType: t.taskType,
-          progress: 0, priority: t.priority, urgency: t.urgency, importance: t.importance,
-          due: '', status: '진행중', note: t.note, monthComment:'',
-          recurParent: t.id, createdAt: Date.now()
-        });
-        t.lastRecurGen = curMonth;
-        created++;
-      }
+  for (const t of recs) {
+    const cur = recurPeriodKey(t.recurrence, now);
+    const baseDate = new Date(((t.date || today()) + 'T00:00:00'));
+    const last = t.lastRecurGen || recurPeriodKey(t.recurrence, baseDate);
+    if (last >= cur) continue;
+    const exists = tasks.some(x => x.recurParent === t.id && recurPeriodKey(t.recurrence, new Date(((x.date||today()) + 'T00:00:00'))) === cur);
+    if (!exists) {
+      const child = {
+        id: uid(), member: session.name, date: today(), name: t.name,
+        category: t.category, desc: t.desc, taskType: t.taskType,
+        progress: 0, priority: t.priority || 'D', urgency: t.urgency, importance: t.importance,
+        due: '', status: '진행중', note: t.note || '', monthComment: '',
+        recurParent: t.id, createdAt: Date.now()
+      };
+      tasks.push(child);
+      created++;
+      if (cfg.storage === 'firebase' && _fbRefs) { try { await _fbRefs.setDoc(_fbRefs.doc(_fbRefs.colRef, child.id), child); } catch(e) {} }
     }
-  });
-  if (created > 0) { saveLocal(); showToast(`반복 업무 ${created}건이 자동 생성되었습니다.`, 'info'); }
+    const src = tasks.find(x => x.id === t.id);
+    if (src) {
+      src.lastRecurGen = cur;
+      if (cfg.storage === 'firebase' && _fbRefs) { try { await _fbRefs.setDoc(_fbRefs.doc(_fbRefs.colRef, src.id), src); } catch(e) {} }
+    }
+  }
+  if (created > 0) { saveLocal(); renderCurrentTab(); showToast(`반복 업무 ${created}건이 자동 생성되었습니다.`, 'info'); }
 }
 
 // 익월 계획(taskType='익월')을 다음 달이 되면 실제 업무로 자동 전환 [개선#2]
@@ -4656,7 +4723,7 @@ const _p3AfterLogin = window.afterLogin;
 window.afterLogin = async function() {
   applyBranding();
   await _p3AfterLogin();
-  if (session.role === 'member') { generateRecurringTasks(); await generateIkmolTasks(); }
+  if (session.role === 'member') { await generateRecurringTasks(); await generateIkmolTasks(); }
   checkBrowserCompat();
   setTimeout(showDailyDigest, 900);  // [개선 N-3] 하루 1회 요약 알림
   // 사용자 역할 표시 보정
