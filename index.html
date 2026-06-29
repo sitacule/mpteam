@@ -279,6 +279,11 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:var
 .pptx-task-item{padding:6px 12px;border-left:3px solid var(--border);margin-bottom:4px;margin-left:8px;font-size:13px;line-height:1.6;}
 .pptx-task-item .task-name{font-weight:600;}
 .pptx-task-item .task-desc{color:var(--text-muted);margin-top:2px;}
+/* 보고서 진행내용 줄바꿈 — 하위 항목을 한 줄씩 [보고 가독성] */
+.task-desc .rpt-detail{margin:3px 0 0;padding-left:18px;line-height:1.6;}
+.task-desc .rpt-detail li{margin:1px 0;}
+.task-desc .rpt-detail li::marker{color:var(--primary);}
+.task-desc .task-desc-single{white-space:pre-wrap;line-height:1.6;}
 .pptx-task-item .task-prog{display:inline-block;margin-left:8px;font-size:12px;font-weight:700;}
 .pptx-task-item .task-prog.p100{color:var(--success);}
 .pptx-task-item .task-prog.p50{color:var(--warning);}
@@ -2495,7 +2500,7 @@ window.renderMonthlyReport = function(cont) {
               <span class="task-prog ${progCls}">${p}%</span>
               ${statusBadge(t.status)}
             </div>
-            ${t.desc?`<div class="task-desc">${escHtml(t.desc)}</div>`:''}
+            ${t.desc?`<div class="task-desc">${formatTaskDetail(t.desc)}</div>`:''}
             ${t.note?`<div class="task-note">💬 ${escHtml(t.note)}</div>`:''}
           </div>`;
         }).join('');
@@ -2517,7 +2522,7 @@ window.renderMonthlyReport = function(cont) {
         const taskHTML = items.map(t =>
           `<div class="pptx-task-item">
             <div class="task-name">${escHtml(t.name)}${t.due?` <span style="font-size:11px;color:var(--text-muted);">(~${fmt(t.due)})</span>`:''}</div>
-            ${t.desc?`<div class="task-desc">${escHtml(t.desc)}</div>`:''}
+            ${t.desc?`<div class="task-desc">${formatTaskDetail(t.desc)}</div>`:''}
           </div>`
         ).join('');
         return `<div class="pptx-cat-group">
@@ -3753,7 +3758,7 @@ window.renderMonthlyReport = function(cont) {
               <span class="task-prog ${progCls}">${p}%</span>
               ${statusBadge(t.status)}${exBtn}
             </div>
-            ${t.desc?`<div class="task-desc">${escHtml(t.desc)}</div>`:''}
+            ${t.desc?`<div class="task-desc">${formatTaskDetail(t.desc)}</div>`:''}
             ${t.note?`<div class="task-note">💬 ${escHtml(t.note)}</div>`:''}
           </div>`;
         }).join('');
@@ -3774,7 +3779,7 @@ window.renderMonthlyReport = function(cont) {
           const canToggle = session.role==='leader' || t.member===session.name;
           return `<div class="pptx-task-item${t.reportExcluded?' report-excluded':''}">
           <div class="task-name">${escHtml(t.name)}${t.due?` <span style="font-size:11px;color:var(--text-muted);">(~${fmt(t.due)})</span>`:''}${canToggle?fuExcludeBtn(t):''}</div>
-          ${t.desc?`<div class="task-desc">${escHtml(t.desc)}</div>`:''}
+          ${t.desc?`<div class="task-desc">${formatTaskDetail(t.desc)}</div>`:''}
         </div>`;}).join('');
         return `<div class="pptx-cat-group"><div class="pptx-cat-label"><span>[${escHtml(cat)}]</span></div>${taskHTML}</div>`;
       }).join('');
@@ -5585,6 +5590,26 @@ function fuFormatDetail(text) {
   }
   const items = lines.map(l => `<li>${escHtml(l)}</li>`).join('');
   return `<ul class="fu-detail">${items}</ul>`;
+}
+
+// 보고서 진행내용 줄바꿈: 실제 줄바꿈 > 번호목록(1. 2.) > " - "·글머리(-,•) 순으로 항목 분리 [보고 가독성]
+function formatTaskDetail(text) {
+  let norm = String(text || '').replace(/\r/g, '').trim();
+  if (!norm) return '';
+  norm = norm.replace(/\s*-->\s*/g, ' → ');
+  let lines;
+  if (norm.includes('\n')) {
+    lines = norm.split('\n');                                   // ① 사용자가 Enter로 직접 줄바꿈한 경우 우선
+  } else if (/(^|\s)\d+[.)]\s/.test(norm)) {
+    lines = norm.split(/\s+(?=\d+[.)]\s)/);                     // ② "1. … 2. …" 번호 목록
+  } else {
+    norm = norm.replace(/\s+[-•]\s+/g, '\n');                   // ③ " - " / " • " 구분자
+    norm = norm.replace(/(^|\n)[-•]\s*/g, '$1');               //    줄머리 기호 제거
+    lines = norm.split('\n');
+  }
+  lines = lines.map(l => l.trim()).filter(Boolean);
+  if (lines.length <= 1) return `<div class="task-desc-single">${escHtml(lines[0] || norm)}</div>`;
+  return `<ul class="rpt-detail">${lines.map(l => `<li>${escHtml(l)}</li>`).join('')}</ul>`;
 }
 
 function fuStatusSelect(f) {
