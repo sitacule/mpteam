@@ -5201,6 +5201,7 @@ window.initMonthlyReport = function(cont) { bumpMetric('monthly'); _p5InitMonthl
 
 // 가치 위젯을 대시보드/내업무 상단에 주입
 function injectValueWidget() {
+  return;  // 가치 위젯(절감 시간 배너) 비활성화 — 사용자 요청으로 표시하지 않음
   if (READONLY) return;
   if (!(session.role === 'leader' && currentTab === 0) && !(session.role === 'member' && currentTab === 0)) return;
   const cont = $('content');
