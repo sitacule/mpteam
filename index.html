@@ -727,6 +727,10 @@ body.viewer-mode #send-btn{pointer-events:none;opacity:.6;}
   <div class="modal">
     <h2>✏️ 업무 수정</h2>
     <input type="hidden" id="edit-task-id">
+    <div class="form-group" id="edit-member-row" style="display:none;">
+      <label>👤 담당자 (재배정) <span style="font-size:12px;color:var(--text-muted);">— 퇴사·이동 시 다른 팀원에게 인계</span></label>
+      <select id="edit-member"></select>
+    </div>
     <div class="form-row" style="margin-bottom:12px;">
       <div class="form-group" style="margin-bottom:0;">
         <label>업무명 *</label>
@@ -2707,6 +2711,28 @@ window.cleanupEmptyTasks = async function() {
   }
 };
 
+// [개선 N-7 안전] 레거시 문서 필드 백필 — createdAt/isArchived 누락분만 보정(추가 전용, 안전)
+window.backfillTaskFields = async function() {
+  if (session.role !== 'leader') { showToast('팀장만 사용할 수 있습니다.', 'info'); return; }
+  const targets = tasks.filter(t => t.createdAt == null || t.isArchived === undefined);
+  if (!targets.length) { showToast('보정할 업무가 없습니다. (이미 모두 정상)', 'info'); return; }
+  if (!confirm(`등록일·아카이브 정보가 빠진 ${targets.length}건을 보정합니다.\n(기존 값은 건드리지 않고 빠진 항목만 채웁니다)`)) return;
+  let ok = 0;
+  for (const t of targets) {
+    if (t.createdAt == null) {
+      const ts = Date.parse((t.date||'') + 'T00:00:00');
+      t.createdAt = isNaN(ts) ? Date.now() : ts;   // 등록일 기준, 없으면 현재
+    }
+    if (t.isArchived === undefined) t.isArchived = false;
+    if (cfg.storage === 'firebase' && _fbRefs) {
+      try { await _fbRefs.setDoc(_fbRefs.doc(_fbRefs.colRef, t.id), t); ok++; } catch(e) { console.error('[보정] 실패', e); }
+    } else { ok++; }
+  }
+  saveLocal();
+  renderCurrentTab();
+  showToast(`데이터 보정 완료 (${ok}건)`, 'success');
+};
+
 window.backupTasks = function() {
   const blob = new Blob([JSON.stringify({ tasks, exportedAt: new Date().toISOString() }, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
@@ -3054,6 +3080,7 @@ window.renderAll = function(cont) {
         <button class="btn btn-ghost btn-sm" onclick="restoreTasks()">📂 복원</button>
         <button class="btn btn-outline btn-sm" onclick="exportCSV()">📊 CSV 내보내기</button>
         <button class="btn btn-danger btn-sm" onclick="cleanupEmptyTasks()" title="업무명이 비어 있는 잘못 등록된 업무를 일괄 삭제">🧹 빈 업무 정리</button>
+        <button class="btn btn-outline btn-sm" onclick="backfillTaskFields()" title="등록일·아카이브 정보가 빠진 오래된 업무를 보정(정렬·장기 미진행 오판 방지)">🛠 데이터 보정</button>
         ${cfg.storage==='firebase'?`<button class="btn btn-accent btn-sm" onclick="migrateFromFolder()" title="공유폴더를 선택하면 모든 팀원 업무 파일을 한 번에 Firebase로 업로드">☁️ 공유폴더 일괄 마이그레이션</button><button class="btn btn-outline btn-sm" onclick="migrateFromFiles()" title="백업 JSON 파일들을 직접 선택해 업로드">☁️ 파일 선택 마이그레이션</button>`:''}
       </div>
     </div>
@@ -3844,6 +3871,13 @@ window.saveEdit = async function() {
   const confirmedBy = confirmed ? (existing.confirmedBy || session.name) : null;
   const confirmedAt = confirmed ? (existing.confirmedAt || new Date().toISOString()) : null;
 
+  // [개선 #4] 담당자 재배정 (팀장 전용) — 이력 기록은 upd 래퍼가 담당
+  const reassign = {};
+  if (session.role === 'leader' && $('edit-member') && $('edit-member-row')?.style.display !== 'none') {
+    const newMember = $('edit-member').value;
+    if (newMember && newMember !== existing.member) reassign.member = newMember;
+  }
+
   await upd(id, {
     name: $('edit-name').value.trim(),
     category: $('edit-category').value,
@@ -3855,7 +3889,8 @@ window.saveEdit = async function() {
     note: $('edit-note').value.trim(),
     monthComment: ($('edit-month-comment')||{}).value?.trim() || '',
     confirmedBy, confirmedAt,
-    adminComment: ($('edit-admin-comment')||{}).value?.trim() || ''
+    adminComment: ($('edit-admin-comment')||{}).value?.trim() || '',
+    ...reassign
   });
   closeModal('edit-modal');
   showToast('수정되었습니다.', 'success');
@@ -4251,8 +4286,10 @@ window.upd = async function(id, fields) {
       logs.push(`상태: ${prev.status||'-'} → ${fields.status}`);
     if (fields.progress !== undefined && fields.progress !== prev.progress)
       logs.push(`진행률: ${prev.progress||0}% → ${fields.progress}%`);
+    if (fields.member !== undefined && fields.member !== prev.member)
+      logs.push(`담당자: ${prev.member||'-'} → ${fields.member}`);   // [개선 #4] 재배정 이력
     if (logs.length) {
-      const history = Array.isArray(prev.history) ? [...prev.history] : [];
+      const history = Array.isArray(fields.history) ? [...fields.history] : (Array.isArray(prev.history) ? [...prev.history] : []);
       history.push({ at: new Date().toISOString(), by: session.name, change: logs.join(', ') });
       fields = { ...fields, history };
     }
@@ -4857,6 +4894,19 @@ window.openEdit = function(id) {
   _p5OpenEdit(id);
   const t = tasks.find(x => x.id === id);
   if (!t) return;
+  // [개선 #4] 담당자 재배정 — 팀장 전용 (인적 변동·인계 대응)
+  const mrow = $('edit-member-row'), msel = $('edit-member');
+  if (mrow && msel) {
+    if (session.role === 'leader') {
+      let opts = (cfg.members||[]).map(m => `<option value="${escHtml(m)}"${m===t.member?' selected':''}>${escHtml(m)}</option>`).join('');
+      // 현재 담당자가 팀원 목록에 없으면(퇴사자 등) 별도 옵션으로 보존
+      if (t.member && !(cfg.members||[]).includes(t.member)) opts = `<option value="${escHtml(t.member)}" selected>${escHtml(t.member)} (현재·목록 외)</option>` + opts;
+      msel.innerHTML = opts;
+      mrow.style.display = '';
+    } else {
+      mrow.style.display = 'none';
+    }
+  }
   // [Phase9][1] 수행일 채우기
   const ed = $('edit-date'); if (ed) ed.value = t.date || today();
   if (session.role === 'member') {
